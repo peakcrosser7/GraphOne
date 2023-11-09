@@ -1,6 +1,6 @@
-#include <iostream>
-
 #include "GraphGenlX/DataLoader.hpp"
+
+#include "test.hpp"
 
 using namespace std;
 using namespace graph_genlx;

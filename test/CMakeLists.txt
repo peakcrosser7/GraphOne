@@ -1,1 +1,2 @@
 add_executable(DataLoader_test DataLoader_test.cpp)
+add_cuda_exec(Buffer_test Buffer_test.cu)

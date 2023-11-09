@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
-project(GraphGenlX)
+
+project(GraphGenlX CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -15,5 +16,16 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -Wall")
 
 include_directories(include)
 
+macro (add_cuda_exec exec_name exec_file)
+    # GPU代码
+    add_executable(${exec_name} ${exec_file})
+    set_target_properties("${exec_name}" PROPERTIES 
+        CUDA_ARCHITECTURES "70"
+        CUDA_SEPARABLE_COMPILATION ON
+    )
+endmacro (add_cuda_exec)
+
 add_subdirectory(apps)
 add_subdirectory(test)
+
+
