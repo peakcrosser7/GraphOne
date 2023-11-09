@@ -3,11 +3,15 @@
 #include <vector>
 
 #include "GraphGenlX/type.hpp"
-#include "GraphGenlX/utils.hpp"
+#include "GraphGenlX/utils.h"
+#include "GraphGenlX/vec/vector.cuh"
 
 namespace graph_genlx {
 
-template <typename index_t, typename value_t, typename nnz_t>
+template <arch_t arch,
+          typename value_t, 
+          typename index_t = uint32_t,
+          typename nnz_t = uint32_t>
 struct CooMat {
     CooMat() = default;
 
@@ -35,12 +39,9 @@ struct CooMat {
     index_t n_cols{0};
     index_t nnz{0};
 
-    std::vector<index_t> row_indices{};
-    std::vector<index_t> col_indices{};
-    std::vector<value_t> values{};   
-
+    vector_t<index_t> row_indices{};
+    vector_t<index_t> col_indices{};
+    vector_t<value_t> values{};
 };
 
-
-    
 } // namespace graph_genlx

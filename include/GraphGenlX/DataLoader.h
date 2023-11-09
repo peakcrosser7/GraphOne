@@ -4,15 +4,15 @@
 #include <sstream>
 #include <vector>
 
-#include "GraphGenlX/utils.hpp"
-#include "GraphGenlX/mat/coo.hpp"
+#include "GraphGenlX/utils.h"
+#include "GraphGenlX/mat/coo.h"
 
 namespace graph_genlx {
 
 class DataLoader {
 public:
     template<typename value_t = double>
-    static CooMat<vid_t, value_t, eid_t> LoadFromTxt(const std::string& filepath,
+    static CooMat<arch_t::cpu, value_t, vid_t, eid_t> LoadFromTxt(const std::string& filepath,
         const std::string& file_ext = ".txt",
         const std::string& comment_prefix = "#",
         char line_sep = ' ') {
@@ -72,7 +72,7 @@ public:
             weights.push_back(val);
         }
 
-        CooMat<vid_t, value_t, eid_t> coo(max_id + 1, max_id + 1, 
+        CooMat<arch_t::cpu, value_t, vid_t, eid_t> coo(max_id + 1, max_id + 1, 
             std::move(srcs), std::move(dsts), std::move(weights));
         return coo;
     }

@@ -14,13 +14,31 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -Wall -g -ggdb")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -Wall")
 
-include_directories(include)
+if(NOT CMAKE_CUDA_ARCHITECTURES)
+  set(CMAKE_CUDA_ARCHITECTURES 70)
+  message(STATUS "Using default GPU Architecture: ${CMAKE_CUDA_ARCHITECTURES}")
+else()
+  message(STATUS "GPU Architecture: ${CMAKE_CUDA_ARCHITECTURES}")
+endif()
+
+# add_library(graph_genlx INTERFACE)
+# set_target_properties(graph_genlx PROPERTIES
+#     CUDA_SEPARABLE_COMPILATION ON
+#     CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES} # Set required architecture.
+# )
+# target_include_directories(graph_genlx
+#     INTERFACE "include"
+#     INTERFACE ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+# )
+
+include_directories(include ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 
 macro (add_cuda_exec exec_name exec_file)
     # GPU代码
     add_executable(${exec_name} ${exec_file})
-    set_target_properties("${exec_name}" PROPERTIES 
-        CUDA_ARCHITECTURES "70"
+    # target_link_libraries(${exec_name} PRIVATE graph_genlx)
+    set_target_properties(${exec_name} PROPERTIES 
+        CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES}
         CUDA_SEPARABLE_COMPILATION ON
     )
 endmacro (add_cuda_exec)

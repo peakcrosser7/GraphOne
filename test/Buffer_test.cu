@@ -1,4 +1,4 @@
-#include "GraphGenlX/buffer.cuh"
+#include "GraphGenlX/buffer.h"
 
 #include "test.hpp"
 

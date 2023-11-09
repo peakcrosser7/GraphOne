@@ -1,4 +1,4 @@
-#include "GraphGenlX/DataLoader.hpp"
+#include "GraphGenlX/DataLoader.h"
 
 #include "test.hpp"
 

@@ -1,6 +1,9 @@
 #pragma once
 
 #include <string>
+#include <vector>
+
+#include "GraphGenlX/vec/vector.cuh"
 
 namespace graph_genlx::utils {
 
@@ -57,6 +60,35 @@ std::string VecToString(const std::vector<T> &vec,
     size_t sz = vec.size();
     for (size_t i = 0; i < sz; ++i) {
         str += str_func(vec[i]) + ", ";
+    }
+    if (sz > 0) {
+        str += "\b\b";
+    }
+    return str += "]";
+}
+
+template<typename T, typename STR_FUNC = decltype(ToString<T>)>
+std::string VecToString(const thrust::host_vector<T> &vec,
+                        STR_FUNC str_func = ToString<T>) {
+    std::string str = "[";
+    size_t sz = vec.size();
+    for (size_t i = 0; i < sz; ++i) {
+        str += str_func(vec[i]) + ", ";
+    }
+    if (sz > 0) {
+        str += "\b\b";
+    }
+    return str += "]";
+}
+
+template<typename T, typename STR_FUNC = decltype(ToString<T>)>
+std::string VecToString(const thrust::device_vector<T> &vec,
+                        STR_FUNC str_func = ToString<T>) {
+    auto host_vec = vec;
+    std::string str = "[";
+    size_t sz = vec.size();
+    for (size_t i = 0; i < sz; ++i) {
+        str += str_func(host_vec[i]) + ", ";
     }
     if (sz > 0) {
         str += "\b\b";
