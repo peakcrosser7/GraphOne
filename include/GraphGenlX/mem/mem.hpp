@@ -16,6 +16,12 @@ struct memfree {
     static void call(T* ptr) {}
 };
 
+template<arch_t arch>
+struct memset {
+    template <typename T>
+    static void call(T* ptr, int value, size_t size) {}
+};
+
 template <arch_t dst_arch, arch_t src_arch>
 struct memcpy {
     template <typename T>

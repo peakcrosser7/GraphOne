@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <type_traits>
 
 #include "GraphGenlX/vec/vector.cuh"
 
@@ -43,17 +44,32 @@ bool StrStartWith(const std::string& str, const std::string& prefix) {
     return true;
 }
 
+template <typename T>
+using ToStrFuncType = decltype(std::declval<T>().ToString());
 
-template<typename T>
-std::string ToString(T num) {
+template <typename T, typename = void>
+struct HasToStrMethod : std::false_type {};
+
+template <typename T>
+struct HasToStrMethod<T, std::void_t<ToStrFuncType<T>>> : std::true_type {};
+
+template <typename T>
+std::string ToString(const T& x) {
     if constexpr (std::is_arithmetic_v<T>) {
-        return std::to_string(num);
+        return std::to_string(x);
+    } else if constexpr (HasToStrMethod<T>::value){
+        return x.ToString();
     } else {
-        return std::string(num);
+        return std::string(x);
     }
 }
 
-template<typename T, typename STR_FUNC = decltype(ToString<T>)>
+template <typename T>
+std::string NumToString(T num) {
+    return ToString(num);
+}
+
+template <typename T, typename STR_FUNC = decltype(ToString<T>)>
 std::string VecToString(const std::vector<T> &vec,
                         STR_FUNC str_func = ToString<T>) {
     std::string str = "[";
@@ -67,7 +83,7 @@ std::string VecToString(const std::vector<T> &vec,
     return str += "]";
 }
 
-template<typename T, typename STR_FUNC = decltype(ToString<T>)>
+template <typename T, typename STR_FUNC = decltype(ToString<T>)>
 std::string VecToString(const thrust::host_vector<T> &vec,
                         STR_FUNC str_func = ToString<T>) {
     std::string str = "[";
@@ -81,7 +97,7 @@ std::string VecToString(const thrust::host_vector<T> &vec,
     return str += "]";
 }
 
-template<typename T, typename STR_FUNC = decltype(ToString<T>)>
+template <typename T, typename STR_FUNC = decltype(ToString<T>)>
 std::string VecToString(const thrust::device_vector<T> &vec,
                         STR_FUNC str_func = ToString<T>) {
     auto host_vec = vec;

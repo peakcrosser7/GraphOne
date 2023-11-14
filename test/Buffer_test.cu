@@ -28,7 +28,9 @@ int main() {
     }
     sort(buf.data(), buf.data() + buf.size(), greater<int>());
 
-    Buffer<int, arch_t::cuda> gbuf = buf;
+    Buffer<int, arch_t::cuda> gbuf;
+    gbuf = buf;
+
 
     print<<<1,1>>>(gbuf.data(), gbuf.size());
     

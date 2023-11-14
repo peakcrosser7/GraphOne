@@ -11,7 +11,7 @@ namespace graph_genlx {
 template <arch_t arch,
           typename value_t, 
           typename index_t = uint32_t,
-          typename nnz_t = uint32_t>
+          typename nnz_t = uint64_t>
 struct CooMat {
     CooMat() = default;
 
@@ -26,9 +26,9 @@ struct CooMat {
 
     std::string ToString() const {
         return "CooMat{ "
-            "n_rows:" + utils::ToString(n_rows) + ", " +
-            "n_cols:" + utils::ToString(n_cols) + ", " +
-            "nnz:" + utils::ToString(nnz) + ", " +
+            "n_rows:" + utils::NumToString(n_rows) + ", " +
+            "n_cols:" + utils::NumToString(n_cols) + ", " +
+            "nnz:" + utils::NumToString(nnz) + ", " +
             "row_indices:" + utils::VecToString(row_indices) + ", " +
             "col_indices:" + utils::VecToString(col_indices) + ", " +
             "values:" + utils::VecToString(values) +

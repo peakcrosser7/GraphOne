@@ -1,8 +1,8 @@
 #pragma once
 
-#include <algorithm>
+#include <cstring>
 
-#include "GraphGenlX/arch/arch.hpp"
+#include "GraphGenlX/mem/mem.hpp"
 
 namespace graph_genlx::archi {
 
@@ -23,10 +23,18 @@ struct memfree<arch_t::cpu> {
 };
 
 template<>
+struct memset<arch_t::cpu> {
+    template <typename T>
+    static void call(T* ptr, int value, size_t size) {
+        std::memset(ptr, value, sizeof(T) * size);
+    }
+};
+
+template<>
 struct memcpy<arch_t::cpu, arch_t::cpu> {
     template <typename T>
     static void call(T* dst, const T* src, size_t size) {
-        std::copy(src, src + size, dst);
+        std::memcpy(dst, src, sizeof(T) * size);
     }
 };
 

@@ -2,21 +2,10 @@
 
 #include <cuda.h>
 
-#include "GraphGenlX/arch/arch.hpp"
+#include "GraphGenlX/mem/mem.hpp"
+#include "GraphGenlX/utils/cuda.cuh"
 
 namespace graph_genlx::archi {
-
-template <typename T>
-void CheckCuda(T result, char const *const func, const char *const file,
-           int const line) {
-  if (result) {
-    fprintf(stderr, "CUDA error at %s:%d code=%d(%s) \"%s\" \n", file, line,
-            static_cast<unsigned int>(result), cudaGetErrorName(result), func);
-    exit(EXIT_FAILURE);
-  }
-}
-
-#define checkCudaErrors(val) CheckCuda((val), #val, __FILE__, __LINE__)
 
 template<>
 struct memalloc<arch_t::cuda> {
@@ -33,6 +22,14 @@ struct memfree<arch_t::cuda> {
     template<typename T>
     static void call(T* ptr) {
         checkCudaErrors(cudaFree(ptr));
+    }
+};
+
+template<>
+struct memset<arch_t::cuda> {
+    template <typename T>
+    static void call(T* ptr, int value, size_t size) {
+        checkCudaErrors(cudaMemset(ptr, value, sizeof(T) * size));
     }
 };
 
