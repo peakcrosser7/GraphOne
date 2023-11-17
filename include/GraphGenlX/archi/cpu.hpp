@@ -2,9 +2,23 @@
 
 #include <cstring>
 
-#include "GraphGenlX/mem/mem.hpp"
+#include <thrust/host_vector.h>
+
+#include "GraphGenlX/archi/archi.hpp"
 
 namespace graph_genlx::archi {
+
+template<>
+struct Vector_t<arch_t::cpu> {
+    template<typename value_t>
+    using type = thrust::host_vector<value_t>;
+};
+
+template<>
+struct ExecPolicy<arch_t::cpu> {
+    static constexpr decltype(thrust::host) value{};
+};
+
 
 template<>
 struct memalloc<arch_t::cpu> {

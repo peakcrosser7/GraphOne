@@ -2,10 +2,25 @@
 
 #include <cuda.h>
 
-#include "GraphGenlX/mem/mem.hpp"
-#include "GraphGenlX/utils/cuda.cuh"
+#include <thrust/device_vector.h>
+
+#include "GraphGenlX/archi/archi.hpp"
+#include "GraphGenlX/debug/cuda.cuh"
+
+#define CODE_CPU_CUDA __host__ __device__
 
 namespace graph_genlx::archi {
+
+template<>
+struct Vector_t<arch_t::cuda> {
+    template<typename value_t>
+    using type = thrust::device_vector<value_t>;
+};
+
+template<>
+struct ExecPolicy<arch_t::cuda> {
+    static constexpr decltype(thrust::device) value{};
+};
 
 template<>
 struct memalloc<arch_t::cuda> {

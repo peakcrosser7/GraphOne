@@ -1,11 +1,6 @@
 #pragma once
 
-#include <string>
-
 #include "GraphGenlX/type.hpp"
-#include "GraphGenlX/utils.h"
-#include "GraphGenlX/buffer.h"
-#include "GraphGenlX/mat/coo.h"
 
 namespace graph_genlx {
 
@@ -13,26 +8,26 @@ template <arch_t arch,
           typename value_t,
           typename index_t = uint32_t,
           typename offset_t = uint64_t>
-class CsrMat {
+class CscMat {
 public:
-    CsrMat() = default;
+    CscMat() = default;
 
-    CsrMat(index_t n_rows, index_t n_cols, offset_t nnz,
-           Buffer<offset_t, arch, index_t> &&row_offsets,
-           Buffer<index_t, arch, offset_t> &&col_indices,
+    CscMat(index_t n_rows, index_t n_cols, offset_t nnz,
+           Buffer<offset_t, arch, index_t> &&col_offsets,
+           Buffer<index_t, arch, offset_t> &&row_indices,
            Buffer<value_t, arch, offset_t> &&values)
         : n_rows(n_rows), n_cols(n_cols), nnz(nnz),
-          row_offsets(std::move(row_offsets)),
-          col_indices(std::move(col_indices)), 
+          col_offsets(std::move(col_offsets)),
+          row_indices(std::move(row_indices)), 
           values(std::move(values)) {}
 
-    CsrMat(index_t n_rows, index_t n_cols, offset_t nnz,
-           const Buffer<offset_t, arch, index_t> &row_offsets,
-           const Buffer<index_t, arch, offset_t> &col_indices,
+    CscMat(index_t n_rows, index_t n_cols, offset_t nnz,
+           const Buffer<offset_t, arch, index_t> &col_offsets,
+           const Buffer<index_t, arch, offset_t> &row_indices,
            const Buffer<value_t, arch, offset_t> &values)
         : n_rows(n_rows), n_cols(n_cols), nnz(nnz),
-          row_offsets(row_offsets), 
-          col_indices(col_indices),
+          col_offsets(col_offsets), 
+          row_indices(row_indices),
           values(values) {}
 
     std::string ToString() const {
@@ -40,8 +35,8 @@ public:
             "n_rows:" + utils::NumToString(n_rows) + ", " +
             "n_cols:" + utils::NumToString(n_cols) + ", " +
             "nnz:" + utils::NumToString(nnz) + ", " +
-            "row_offsets:" + row_offsets.ToString() + ", " +
-            "col_indices:" + col_indices.ToString() + ", " +
+            "col_offsets:" + col_offsets.ToString() + ", " +
+            "row_indices:" + row_indices.ToString() + ", " +
             "values:" + values.ToString() +
             " }";
     }
@@ -50,11 +45,10 @@ public:
     index_t n_cols;
     offset_t nnz;
 
-    Buffer<offset_t, arch, index_t> row_offsets;
-    Buffer<index_t, arch, offset_t> col_indices;
+    Buffer<offset_t, arch, index_t> col_offsets;
+    Buffer<index_t, arch, offset_t> row_indices;
     Buffer<value_t, arch, offset_t> values;
 
 };
-
 
 } // namespace graph_genlx

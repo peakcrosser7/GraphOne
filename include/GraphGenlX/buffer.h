@@ -5,8 +5,7 @@
 
 #include "GraphGenlX/type.hpp"
 #include "GraphGenlX/utils.h"
-#include "GraphGenlX/mem/cpu.hpp"
-#include "GraphGenlX/mem/cuda.cuh"
+#include "GraphGenlX/archi.h"
 
 namespace graph_genlx {
 
@@ -33,15 +32,32 @@ public:
         arch_memcpy<arch_t::cpu>(data_, vec.data(), size_);
     }
 
+    Buffer(const Buffer<value_t, arch, index_t>& rhs) 
+        : size_(rhs.size()), data_(arch_memalloc(rhs.size())) {
+        arch_memcpy<arch>(data_, rhs.data(), size_);
+        // LOG_DEBUG << "buffer copy ctor\n";
+    }
+
     template <arch_t from_arch>
     Buffer(const Buffer<value_t, from_arch, index_t>& rhs) 
         : size_(rhs.size()), data_(arch_memalloc(rhs.size())) {
         arch_memcpy<from_arch>(data_, rhs.data(), size_);
+        // LOG_DEBUG << "buffer copy ctor\n";
     }
 
     Buffer(Buffer<value_t, arch, index_t>&& rhs) : size_(rhs.size_), data_(rhs.data_) {
         rhs.size_ = 0;
         rhs.data_ = nullptr;
+        // LOG_DEBUG << "buffer move ctor\n";
+    }
+
+    template <arch_t from_arch>
+    void copy_from(const Buffer<value_t, from_arch, index_t>& src_buf) {
+        *this = src_buf;
+    }
+
+    void move_from(Buffer<value_t, arch, index_t>& src_buf) {
+        *this = std::move(src_buf);
     }
 
     Buffer& operator= (const Buffer<value_t, arch, index_t>& rhs) {
@@ -86,6 +102,22 @@ public:
         arch_memfree(data_);
     }
 
+    const value_t *begin() const {
+        return data_;
+    }
+
+    value_t *begin() {
+        return data_;
+    }
+    
+    const value_t *end() const {
+        return data_ + size_;
+    }
+
+    value_t *end() {
+        return data_ + size_;
+    }
+
     const value_t* data() const {
         return data_;
     }
@@ -104,13 +136,23 @@ public:
         str += "size_:" + utils::NumToString(size_) + ", ";
         str += "data_:[";
 
+        value_t* host_data = data_;
+        if constexpr (arch != arch_t::cpu) {
+            host_data = archi::memalloc<arch_t::cpu>::template call<value_t>(size_);
+            archi::memcpy<arch_t::cpu, arch>::template call<value_t>(host_data, data_, size_);
+        }
+
         for (index_t i = 0; i < size_; ++i) {
-            str += utils::ToString(data_[i]);
+            str += utils::ToString(host_data[i]);
             if (i < size_ - 1) {
                 str += ",";
             }
         }
         str += "] }";
+        if constexpr (arch != arch_t::cpu) {
+            archi::memfree<arch_t::cpu>::template call<value_t>(host_data);
+        }
+
         return str;
     }
 

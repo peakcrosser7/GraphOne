@@ -21,6 +21,8 @@ else()
   message(STATUS "GPU Architecture: ${CMAKE_CUDA_ARCHITECTURES}")
 endif()
 
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --extended-lambda")
+
 # add_library(graph_genlx INTERFACE)
 # set_target_properties(graph_genlx PROPERTIES
 #     CUDA_SEPARABLE_COMPILATION ON

@@ -4,7 +4,7 @@
 
 #include "GraphGenlX/type.hpp"
 #include "GraphGenlX/utils.h"
-#include "GraphGenlX/vec/vector.cuh"
+#include "GraphGenlX/archi.h"
 
 namespace graph_genlx {
 
@@ -15,14 +15,17 @@ template <arch_t arch,
 struct CooMat {
     CooMat() = default;
 
-    CooMat(index_t num_rows, index_t num_cols)
-        : n_rows(n_rows), n_cols(num_cols) {}
+    CooMat(index_t n_rows, index_t n_cols)
+        : n_rows(n_rows), n_cols(n_cols) {}
     
-    CooMat(index_t num_rows, index_t num_cols,
-        std::vector<index_t>&& rows, std::vector<index_t>&& cols,
-        std::vector<value_t>&& weights)
-        : n_rows(num_rows), n_cols(num_cols), nnz(rows.size()),
-          row_indices(rows), col_indices(cols), values(weights) {}
+    CooMat(index_t n_rows, index_t n_cols,
+        vector_t<arch, index_t>&& row_indices, 
+        vector_t<arch, index_t>&& col_indices,
+        vector_t<arch, value_t>&& values)
+        : n_rows(n_rows), n_cols(n_cols), nnz(row_indices.size()),
+          row_indices(std::move(row_indices)), 
+          col_indices(std::move(col_indices)), 
+          values(std::move(values)) {}
 
     std::string ToString() const {
         return "CooMat{ "
@@ -39,9 +42,9 @@ struct CooMat {
     index_t n_cols{0};
     index_t nnz{0};
 
-    vector_t<index_t> row_indices{};
-    vector_t<index_t> col_indices{};
-    vector_t<value_t> values{};
+    vector_t<arch, index_t> row_indices{};
+    vector_t<arch, index_t> col_indices{};
+    vector_t<arch, value_t> values{};
 };
 
 } // namespace graph_genlx

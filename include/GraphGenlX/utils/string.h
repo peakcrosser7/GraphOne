@@ -4,7 +4,8 @@
 #include <vector>
 #include <type_traits>
 
-#include "GraphGenlX/vec/vector.cuh"
+#include "GraphGenlX/type.hpp"
+#include "GraphGenlX/archi.h"
 
 namespace graph_genlx::utils {
 
@@ -42,6 +43,18 @@ bool StrStartWith(const std::string& str, const std::string& prefix) {
         }
     }
     return true;
+}
+
+inline std::string ArchToString(arch_t arch) {
+    switch (arch) {
+    case arch_t::cpu:
+        return "cpu";
+    case arch_t::cuda:
+        return "cuda";
+    default:
+        break;
+    }
+    return "undefine";
 }
 
 template <typename T>
@@ -100,16 +113,8 @@ std::string VecToString(const thrust::host_vector<T> &vec,
 template <typename T, typename STR_FUNC = decltype(ToString<T>)>
 std::string VecToString(const thrust::device_vector<T> &vec,
                         STR_FUNC str_func = ToString<T>) {
-    auto host_vec = vec;
-    std::string str = "[";
-    size_t sz = vec.size();
-    for (size_t i = 0; i < sz; ++i) {
-        str += str_func(host_vec[i]) + ", ";
-    }
-    if (sz > 0) {
-        str += "\b\b";
-    }
-    return str += "]";
+    thrust::host_vector<T> host_vec = vec;
+    return VecToString(host_vec, str_func);
 }
 
 } // namespace graph_genl
