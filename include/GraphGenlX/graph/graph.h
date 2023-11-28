@@ -4,12 +4,12 @@
 #include "GraphGenlX/graph/graph_view.hpp"
 #include "GraphGenlX/mat/csr.h"
 #include "GraphGenlX/mat/csc.h"
-#include "GraphGenlX/mat/builder.h"
+#include "GraphGenlX/mat/convert.h"
 
 namespace graph_genlx {
 
 template <arch_t arch, graph_view_t views,
-        //   typename v_prop_t, typename e_prop_t, typename g_prop_t,
+          typename vprop_t, /* typename e_prop_t, typename g_prop_t,*/
           typename vertex_t, typename edge_t, typename weight_t>
 class Graph {
 protected:
@@ -26,22 +26,43 @@ protected:
 
 public:
     template <typename = std::enable_if_t<has_csr_>>
-    Graph(const CsrMat<arch, weight_t, vid_t, edge_t>& csr)
-    : csr_(csr), csc_() {
+    Graph(const csr_t& csr, const vprop_t& vprops)
+    : csr_(csr), csc_(), vprops_(vprops) {
         if constexpr (has_csc_) {
             csc_ = mat::ToCsc(csr);
         }
     }
 
+    template <typename = std::enable_if_t<has_csr_>>
+    Graph(csr_t&& csr, vprop_t&& vprops)
+    : csr_(), csc_(), vprops_(std::move(vprops)) {
+        if constexpr (has_csc_) {
+            csc_ = mat::ToCsc(csr);
+        }
+        csr_ = std::move(csr);
+    }
+
+    const vprop_t& vprops() const {
+        return vprops_;
+    }
+
     std::string ToString() const {
         std::string str;
         str += "Graph{ ";
-        str += "arch_type_:" + utils::ArchToString(arch_type_) + ", ";
+        str += "arch_type_:" + utils::ToString(arch_type_) + ", ";
         if constexpr (has_csr_) {
             str += "csr_:" + csr_.ToString() + ", ";
         }
         if constexpr (has_csc_) {
             str += "csc_:" + csc_.ToString() + ", ";
+        }
+        str += "vprops_:";
+        if constexpr (!std::is_same_v<vprop_t, empty_t>) {
+            if constexpr (utils::HasToStrMethod<vprop_t>::value) {
+                str += vprops_.ToString() + ", ";
+            } else {
+                str += "..., ";
+            }
         }
         str += " }";
         return str;
@@ -50,6 +71,8 @@ public:
 protected:
     csr_or_ept_t csr_;
     csc_or_ept_t csc_;
+
+    vprop_t vprops_;
 };
 
 } // namespace graph_genlx

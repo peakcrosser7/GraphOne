@@ -1,4 +1,4 @@
-#include "GraphGenlX/buffer.h"
+#include "GraphGenlX/base/buffer.h"
 
 #include "test.hpp"
 
@@ -17,7 +17,7 @@ __global__ void print(T* arr, int size) {
 
 int main() {
     int cnt = 10;
-    Buffer<int, arch_t::cpu> buf(cnt);
+    Buffer<arch_t::cpu, int> buf(cnt);
 
     for (int i = 0; i < cnt; ++i) {
         buf[i] = i;
@@ -28,7 +28,7 @@ int main() {
     }
     sort(buf.data(), buf.data() + buf.size(), greater<int>());
 
-    Buffer<int, arch_t::cuda> gbuf;
+    Buffer<arch_t::cuda, int> gbuf;
     gbuf = buf;
 
 

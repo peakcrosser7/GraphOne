@@ -1,4 +1,5 @@
 #pragma once
 
-#include "./utils/log.hpp"
-#include "./utils/string.h"
+#include "GraphGenlX/utils/log.hpp"
+#include "GraphGenlX/utils/string.hpp"
+#include "GraphGenlX/utils/string_arch.h"

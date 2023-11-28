@@ -9,7 +9,7 @@
 
 namespace graph_genlx {
 
-template<typename value_t, arch_t arch = arch_t::cpu, typename index_t = std::size_t>
+template<arch_t arch, typename value_t, typename index_t = std::size_t>
 class Buffer {
 
 protected:
@@ -32,35 +32,35 @@ public:
         arch_memcpy<arch_t::cpu>(data_, vec.data(), size_);
     }
 
-    Buffer(const Buffer<value_t, arch, index_t>& rhs) 
+    Buffer(const Buffer& rhs) 
         : size_(rhs.size()), data_(arch_memalloc(rhs.size())) {
         arch_memcpy<arch>(data_, rhs.data(), size_);
         // LOG_DEBUG << "buffer copy ctor\n";
     }
 
     template <arch_t from_arch>
-    Buffer(const Buffer<value_t, from_arch, index_t>& rhs) 
+    Buffer(const Buffer<from_arch, value_t, index_t>& rhs) 
         : size_(rhs.size()), data_(arch_memalloc(rhs.size())) {
         arch_memcpy<from_arch>(data_, rhs.data(), size_);
         // LOG_DEBUG << "buffer copy ctor\n";
     }
 
-    Buffer(Buffer<value_t, arch, index_t>&& rhs) : size_(rhs.size_), data_(rhs.data_) {
+    Buffer(Buffer&& rhs) : size_(rhs.size_), data_(rhs.data_) {
         rhs.size_ = 0;
         rhs.data_ = nullptr;
         // LOG_DEBUG << "buffer move ctor\n";
     }
 
     template <arch_t from_arch>
-    void copy_from(const Buffer<value_t, from_arch, index_t>& src_buf) {
+    void copy_from(const Buffer<from_arch, value_t, index_t>& src_buf) {
         *this = src_buf;
     }
 
-    void move_from(Buffer<value_t, arch, index_t>& src_buf) {
+    void move_from(Buffer<arch, value_t, index_t>& src_buf) {
         *this = std::move(src_buf);
     }
 
-    Buffer& operator= (const Buffer<value_t, arch, index_t>& rhs) {
+    Buffer& operator= (const Buffer& rhs) {
         if (this == &rhs) {
             return *this;
         }
@@ -72,7 +72,7 @@ public:
     }
 
     template<arch_t from_arch>
-    Buffer& operator= (const Buffer<value_t, from_arch, index_t>& rhs) {
+    Buffer& operator= (const Buffer<from_arch, value_t, index_t>& rhs) {
         size_ = rhs.size();
         arch_memfree(data_);
         data_ = arch_memalloc(size_);
@@ -80,7 +80,7 @@ public:
         return *this;
     }
 
-    Buffer& operator= (Buffer<value_t, arch, index_t>&& rhs) {
+    Buffer& operator= (Buffer&& rhs) {
         if (this != &rhs) {
             size_ = rhs.size_;
             data_ = rhs.data_;

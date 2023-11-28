@@ -6,7 +6,7 @@
 namespace graph_genlx {
 
 using vid_t = uint32_t;
-using eid_t = uint64_t;
+using eid_t = uint32_t;
 
 enum class arch_t {
     cpu,

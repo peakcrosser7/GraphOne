@@ -2,6 +2,7 @@
 
 #include <cstring>
 
+#include <thrust/execution_policy.h>
 #include <thrust/host_vector.h>
 
 #include "GraphGenlX/archi/archi.hpp"

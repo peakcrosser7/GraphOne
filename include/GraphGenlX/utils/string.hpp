@@ -5,7 +5,6 @@
 #include <type_traits>
 
 #include "GraphGenlX/type.hpp"
-#include "GraphGenlX/archi.h"
 
 namespace graph_genlx::utils {
 
@@ -45,18 +44,6 @@ bool StrStartWith(const std::string& str, const std::string& prefix) {
     return true;
 }
 
-inline std::string ArchToString(arch_t arch) {
-    switch (arch) {
-    case arch_t::cpu:
-        return "cpu";
-    case arch_t::cuda:
-        return "cuda";
-    default:
-        break;
-    }
-    return "undefine";
-}
-
 template <typename T>
 using ToStrFuncType = decltype(std::declval<T>().ToString());
 
@@ -77,6 +64,19 @@ std::string ToString(const T& x) {
     }
 }
 
+template <>
+std::string ToString<arch_t>(const arch_t& x) {
+    switch (x) {
+    case arch_t::cpu:
+        return "cpu";
+    case arch_t::cuda:
+        return "cuda";
+    default:
+        break;
+    }
+    return "undefine";
+}
+
 template <typename T>
 std::string NumToString(T num) {
     return ToString(num);
@@ -88,33 +88,25 @@ std::string VecToString(const std::vector<T> &vec,
     std::string str = "[";
     size_t sz = vec.size();
     for (size_t i = 0; i < sz; ++i) {
-        str += str_func(vec[i]) + ", ";
+        str += str_func(vec[i]) + ",";
     }
     if (sz > 0) {
-        str += "\b\b";
+        str += "\b";
     }
     return str += "]";
 }
 
 template <typename T, typename STR_FUNC = decltype(ToString<T>)>
-std::string VecToString(const thrust::host_vector<T> &vec,
+std::string VecToString(const T* vec, size_t size,
                         STR_FUNC str_func = ToString<T>) {
     std::string str = "[";
-    size_t sz = vec.size();
-    for (size_t i = 0; i < sz; ++i) {
-        str += str_func(vec[i]) + ", ";
+    for (size_t i = 0; i < size; ++i) {
+        str += str_func(vec[i]) + ",";
     }
-    if (sz > 0) {
-        str += "\b\b";
+    if (size > 0) {
+        str += "\b";
     }
     return str += "]";
-}
-
-template <typename T, typename STR_FUNC = decltype(ToString<T>)>
-std::string VecToString(const thrust::device_vector<T> &vec,
-                        STR_FUNC str_func = ToString<T>) {
-    thrust::host_vector<T> host_vec = vec;
-    return VecToString(host_vec, str_func);
 }
 
 } // namespace graph_genl

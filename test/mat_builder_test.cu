@@ -1,4 +1,5 @@
-#include "GraphGenlX/mat/builder.h"
+#include "GraphGenlX/loader/loader.h"
+#include "GraphGenlX/mat/convert.h"
 
 #include "test.hpp"
 
@@ -6,10 +7,8 @@ using namespace std;
 using namespace graph_genlx;
 
 int main() {
-    auto coo = mat::LoadCooFromTxt<int>("../data/bfs_test/bfs_test.adj");
-    cout << coo.ToString() << endl;
-
-    auto csr = mat::ToCsr<arch_t::cpu>(coo);
+    auto csr = Loader<>()
+                   .LoadCsrFromTxt<arch_t::cuda, int>("../data/sample/sample.adj");
     cout << csr.ToString() << endl;
 
     auto csc = mat::ToCsc(csr);
