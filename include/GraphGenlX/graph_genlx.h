@@ -5,5 +5,5 @@
 #include "GraphGenlX/archi.h"
 #include "GraphGenlX/domain.h"
 
-#include "GraphGenlX/mat/builder.h"
+#include "GraphGenlX/loader/loader.h"
 #include "GraphGenlX/graph/builder.h"

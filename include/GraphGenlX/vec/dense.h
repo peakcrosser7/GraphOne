@@ -13,6 +13,16 @@ public:
 
     constexpr static arch_t arch_type = arch;
 
+    void set(index_t i, const value_t& val) {
+        archi::memcpy<arch, arch_t::cpu, value_t>(this->data_ + i, &val, 1);
+    }
+
+    value_t get(index_t i) const {
+        value_t val;
+        archi::memcpy<arch_t::cpu, arch, value_t>(&val, this->data_ + i, 1);
+        return val;
+    }
+
     std::string ToString() const {
         std::string str;
         str += "DenseVec{ ";
@@ -22,8 +32,8 @@ public:
 
         value_t* host_data = this->data_;
         if constexpr (arch != arch_t::cpu) {
-            host_data = archi::memalloc<arch_t::cpu>::template call<value_t>(this->size_);
-            archi::memcpy<arch_t::cpu, arch>::template call<value_t>(host_data, this->data_, this->size_);
+            host_data = archi::memalloc<arch_t::cpu, value_t>(this->size_);
+            archi::memcpy<arch_t::cpu, arch, value_t>(host_data, this->data_, this->size_);
         }
 
         for (index_t i = 0; i < this->size_; ++i) {
@@ -34,7 +44,7 @@ public:
         }
         str += "] }";
         if constexpr (arch != arch_t::cpu) {
-            archi::memfree<arch_t::cpu>::template call<value_t>(host_data);
+            archi::memfree<arch_t::cpu, value_t>(host_data);
         }
 
         return str;

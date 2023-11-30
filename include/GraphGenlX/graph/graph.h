@@ -56,8 +56,8 @@ public:
         if constexpr (has_csc_) {
             str += "csc_:" + csc_.ToString() + ", ";
         }
-        str += "vprops_:";
         if constexpr (!std::is_same_v<vprop_t, empty_t>) {
+            str += "vprops_:";
             if constexpr (utils::HasToStrMethod<vprop_t>::value) {
                 str += vprops_.ToString() + ", ";
             } else {

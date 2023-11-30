@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "GraphGenlX/type.hpp"
 #include "GraphGenlX/utils.h"
 #include "GraphGenlX/base/buffer.h"
@@ -19,7 +21,14 @@ struct StridedMat {
     StridedMat() = default;
 
     StridedMat(index_t n_stride, index_t n_contiguous)
-        :n_stride(n_stride), n_contiguous(n_contiguous), values(n_stride * n_contiguous) {}
+        : n_stride(n_stride), n_contiguous(n_contiguous), values(n_stride * n_contiguous) {}
+    
+    StridedMat(const std::vector<std::vector<value_t>>& mat_vec)
+        : n_stride(mat_vec.size()), n_contiguous(mat_vec.front().size()), values(n_stride * n_contiguous) {
+        for (index_t i = 0; i < n_stride; ++i) {
+            values.copy_from(mat_vec[i], i * n_contiguous);
+        }
+    }
 
     StridedMat(const StridedMat& rhs)
         : n_stride(rhs.n_stride), n_contiguous(rhs.n_contiguous), values(rhs.values) {}
@@ -124,6 +133,9 @@ struct DenseMat<arch, value_t, index_t, layout_t::ROW_MAJOR, tile_t>
 
     DenseMat(index_t n_rows, index_t n_cols) 
         : strided_mat_t(n_rows, n_cols), n_rows(n_rows), n_cols(n_cols) {}
+    
+    DenseMat(const std::vector<std::vector<value_t>>& mat_vec)
+        : strided_mat_t(mat_vec), n_rows(mat_vec.size()), n_cols(mat_vec.front().size()) {}
 
     DenseMat(const DenseMat& rhs)
         : strided_mat_t(rhs), n_rows(rhs.n_rows), n_cols(rhs.n_cols) {}
@@ -189,6 +201,9 @@ struct DenseMat<arch, value_t, index_t, layout_t::COL_MAJOR, tile_t>
 
     DenseMat(index_t n_rows, index_t n_cols) 
         : strided_mat_t(n_cols, n_rows), n_rows(n_rows), n_cols(n_cols) {}
+
+    DenseMat(const std::vector<std::vector<value_t>>& mat_vec)
+        : strided_mat_t(mat_vec), n_rows(mat_vec.front().size()), n_cols(mat_vec.size()) {}
 
     DenseMat(const DenseMat& rhs)
         : strided_mat_t(rhs), n_rows(rhs.n_rows), n_cols(rhs.n_cols) {}

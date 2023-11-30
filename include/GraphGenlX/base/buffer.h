@@ -11,37 +11,30 @@ namespace graph_genlx {
 
 template<arch_t arch, typename value_t, typename index_t = std::size_t>
 class Buffer {
-
-protected:
-    static constexpr auto arch_memalloc = archi::memalloc<arch>::template call<value_t>;
-    static constexpr auto arch_memfree = archi::memfree<arch>::template call<value_t>;
-    static constexpr auto arch_memset = archi::memset<arch>::template call<value_t>;
-
-    template<arch_t from_arch>
-    static constexpr auto arch_memcpy = archi::memcpy<arch, from_arch>::template call<value_t>;
-
 public:
     Buffer() = default;
 
-    Buffer(index_t size) : size_(size), data_(arch_memalloc(size)) {
-        arch_memset(data_, 0, size);
+    explicit Buffer(index_t size)
+        : size_(size), data_(archi::memalloc<arch, value_t>(size)) {
+        archi::memset<arch, value_t>(data_, 0, size);
     }
 
     // copy ctor from std::vector
-    Buffer(const std::vector<value_t>& vec) : size_(vec.size()), data_(arch_memalloc(vec.size())) {
-        arch_memcpy<arch_t::cpu>(data_, vec.data(), size_);
+    explicit Buffer(const std::vector<value_t> &vec)
+        : size_(vec.size()), data_(archi::memalloc<arch, value_t>(vec.size())) {
+        archi::memcpy<arch, arch_t::cpu, value_t>(data_, vec.data(), size_);
     }
 
     Buffer(const Buffer& rhs) 
-        : size_(rhs.size()), data_(arch_memalloc(rhs.size())) {
-        arch_memcpy<arch>(data_, rhs.data(), size_);
+        : size_(rhs.size()), data_(archi::memalloc<arch, value_t>(rhs.size())) {
+        archi::memcpy<arch, arch, value_t>(data_, rhs.data(), size_);
         // LOG_DEBUG << "buffer copy ctor\n";
     }
 
     template <arch_t from_arch>
     Buffer(const Buffer<from_arch, value_t, index_t>& rhs) 
-        : size_(rhs.size()), data_(arch_memalloc(rhs.size())) {
-        arch_memcpy<from_arch>(data_, rhs.data(), size_);
+        : size_(rhs.size()), data_(archi::memalloc<arch, value_t>(rhs.size())) {
+        archi::memcpy<arch, from_arch, value_t>(data_, rhs.data(), size_);
         // LOG_DEBUG << "buffer copy ctor\n";
     }
 
@@ -51,32 +44,37 @@ public:
         // LOG_DEBUG << "buffer move ctor\n";
     }
 
-    template <arch_t from_arch>
-    void copy_from(const Buffer<from_arch, value_t, index_t>& src_buf) {
-        *this = src_buf;
+    void copy_from(const std::vector<value_t>& vec, index_t start = 0) {
+        index_t len = std::min(index_t(vec.size()), size_ - start);
+        archi::memcpy<arch, arch_t::cpu, value_t>(data_ + start, vec.data(), len);
     }
 
-    void move_from(Buffer<arch, value_t, index_t>& src_buf) {
-        *this = std::move(src_buf);
-    }
+    // template <arch_t from_arch>
+    // void copy_from(const Buffer<from_arch, value_t, index_t>& src_buf) {
+    //     *this = src_buf;
+    // }
+
+    // void move_from(Buffer<arch, value_t, index_t>& src_buf) {
+    //     *this = std::move(src_buf);
+    // }
 
     Buffer& operator= (const Buffer& rhs) {
         if (this == &rhs) {
             return *this;
         }
         size_ = rhs.size();
-        arch_memfree(data_);
-        data_ = arch_memalloc(size_);
-        arch_memcpy<arch>(data_, rhs.data(), size_);
+        archi::memfree<arch, value_t>(data_);
+        data_ = archi::memalloc<arch, value_t>(size_);
+        archi::memcpy<arch, arch, value_t>(data_, rhs.data(), size_);
         return *this;
     }
 
     template<arch_t from_arch>
     Buffer& operator= (const Buffer<from_arch, value_t, index_t>& rhs) {
         size_ = rhs.size();
-        arch_memfree(data_);
-        data_ = arch_memalloc(size_);
-        arch_memcpy<from_arch>(data_, rhs.data(), size_);
+        archi::memfree<arch, value_t>(data_);
+        data_ = archi::memalloc<arch, value_t>(size_);
+        archi::memcpy<arch, from_arch, value_t>(data_, rhs.data(), size_);
         return *this;
     }
 
@@ -99,7 +97,7 @@ public:
     }
 
     ~Buffer() {
-        arch_memfree(data_);
+        archi::memfree<arch, value_t>(data_);
     }
 
     const value_t *begin() const {
@@ -138,8 +136,8 @@ public:
 
         value_t* host_data = data_;
         if constexpr (arch != arch_t::cpu) {
-            host_data = archi::memalloc<arch_t::cpu>::template call<value_t>(size_);
-            archi::memcpy<arch_t::cpu, arch>::template call<value_t>(host_data, data_, size_);
+            host_data = archi::memalloc<arch_t::cpu, value_t>(size_);
+            archi::memcpy<arch_t::cpu, arch, value_t>(host_data, data_, size_);
         }
 
         for (index_t i = 0; i < size_; ++i) {
@@ -150,7 +148,7 @@ public:
         }
         str += "] }";
         if constexpr (arch != arch_t::cpu) {
-            archi::memfree<arch_t::cpu>::template call<value_t>(host_data);
+            archi::memfree<arch_t::cpu, value_t>(host_data);
         }
 
         return str;

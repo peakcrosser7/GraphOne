@@ -41,7 +41,7 @@ int main () {
     cout << feat2.ToString() << endl;
 
     gnn::vprop_t<arch_t::cpu> vprops1(csr.n_rows, 4);
-    loader.LoadVertexStatusFromTxt<int32_t>("../data/sample/sample_more.feat",[&](vid_t vid, std::vector<int32_t>& vdata) {
+    loader.LoadVertexStatusFromTxt<int32_t>("../data/sample/sample_more.feat", [&](vid_t vid, std::vector<int32_t>& vdata) {
         if (vdata.size() < 5) {
             return false;
         }
@@ -51,12 +51,25 @@ int main () {
         vprops1.labels[vid] = vdata.back();
         return true;
     });
-    cout << vprops1.ToString() << endl;
+    cout << "vprop1:" <<vprops1.ToString() << endl;
 
     gnn::vprop_t<arch_t::cuda> vprops2;
     vprops2.features = feats;
     vprops2.labels = labels;
-    cout << vprops2.ToString() << endl;
+    cout << "vprop2:" <<vprops2.ToString() << endl;
+
+    vector<vector<double>> feat_vec(csr.n_rows);
+    DenseVec<arch_t::cpu, int32_t> label_vec(csr.n_rows);
+    loader.LoadVertexStatusFromTxt<double>("../data/sample/sample_more.feat", [&](vid_t vid, std::vector<double>& vdata) {
+        label_vec[vid] = vdata.back();
+        vdata.pop_back();
+        feat_vec[vid] = std::move(vdata);
+        return true;
+    });
+    gnn::vprop_t<arch_t::cuda> vprops3;
+    vprops3.features = DenseMat<arch_t::cuda, double>(feat_vec);
+    vprops3.labels = label_vec;
+    cout << "vprop3:" << vprops3.ToString() << endl;
 
     auto g = graph::FromCsr<graph_view_t::csc>(std::move(csr), std::move(vprops2));
     cout << g.ToString() << endl;
