@@ -19,5 +19,11 @@ struct empty_t {
     }
 };
 
+enum class vstart_t {
+    FROM_0_TO_0,
+    FROM_0_TO_1,
+    FROM_1_TO_1
+};
+
 
 }   // namespace graph_genlx 

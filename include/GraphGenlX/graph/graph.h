@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GraphGenlX/type.hpp"
+#include "GraphGenlX/archi.h"
 #include "GraphGenlX/graph/graph_view.hpp"
 #include "GraphGenlX/mat/csr.h"
 #include "GraphGenlX/mat/csc.h"
@@ -9,11 +10,18 @@
 namespace graph_genlx {
 
 template <arch_t arch, graph_view_t views,
-          typename vprop_t, /* typename e_prop_t, typename g_prop_t,*/
+          vstart_t v_start,
+          typename vprop_t, 
           typename vertex_t, typename edge_t, typename weight_t>
 class Graph {
+public:
+    using vprop_type = vprop_t;
+    using vertex_type = vertex_t;
+    using edge_type = edge_t;
+
 protected:
-    constexpr static arch_t arch_type_ = arch;
+    constexpr static arch_t arch_value_ = arch;
+    constexpr static vstart_t vstart_value = v_start;
 
     constexpr static bool has_csr_ = has_view(views, graph_view_t::csr);
     constexpr static bool has_csc_ = has_view(views, graph_view_t::csc);
@@ -46,10 +54,46 @@ public:
         return vprops_;
     }
 
+    vertex_t num_vertices() const {
+        if constexpr (has_csr_) {
+            return csr_.n_rows;
+        }
+        return csc_.n_rows;
+    }
+
+    edge_t num_edges() const {
+        if constexpr (has_csr_) {
+            return csr_.nnz;
+        }
+        return csc_.nnz;
+    }
+
+    GENLX_ARCH_INL
+    typename std::enable_if_t<has_csr_, edge_t>
+    get_out_degree(vertex_t vid) const {
+        return csr_.row_offsets[vid + 1] - csr_.row_offsets[vid];
+    }
+
+    GENLX_ARCH_INL
+    typename std::enable_if_t<has_csc_, edge_t>
+    get_in_degree(vertex_t vid) const {
+        return csc_.col_offsets[vid + 1] - csc_.col_offsets[vid];
+    }
+
+    GENLX_ARCH_INL edge_t get_degree(vertex_t vid) const {
+        if constexpr (has_csr_) {
+            return get_out_degree(vid);
+        } 
+        if constexpr (has_csc_) {
+            return get_in_degree(vid);
+        }
+        return 0;
+    }
+
     std::string ToString() const {
         std::string str;
         str += "Graph{ ";
-        str += "arch_type_:" + utils::ToString(arch_type_) + ", ";
+        str += "arch_value_:" + utils::ToString(arch_value_) + ", ";
         if constexpr (has_csr_) {
             str += "csr_:" + csr_.ToString() + ", ";
         }

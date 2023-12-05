@@ -1,4 +1,3 @@
 #pragma once
 
-#include "GraphGenlX/archi/cpu.hpp"
-#include "GraphGenlX/archi/cuda.cuh"
+#include "GraphGenlX/archi/archi.h"

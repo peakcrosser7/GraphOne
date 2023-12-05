@@ -11,7 +11,7 @@ template <arch_t arch,
           typename index_t = uint32_t,
           typename offset_t = uint64_t>
 struct CscMat {
-    constexpr static arch_t arch_type = arch;
+    constexpr static arch_t arch_value = arch;
 
     CscMat() = default;
 
@@ -35,7 +35,7 @@ struct CscMat {
 
     std::string ToString() const {
         return "CscMat{ "
-            "arch_type:" + utils::ToString(arch_type) + ", " +
+            "arch_value:" + utils::ToString(arch_value) + ", " +
             "n_rows:" + utils::NumToString(n_rows) + ", " +
             "n_cols:" + utils::NumToString(n_cols) + ", " +
             "nnz:" + utils::NumToString(nnz) + ", " +

@@ -34,7 +34,7 @@ Buffer<arch, index_t, offset_t> OffsetsToIndices(
         thrust::make_transform_iterator( // 用于判断相邻两个元素是否相等
             thrust::make_zip_iterator( // 用于遍历两个相邻元素
                 thrust::make_tuple(offsets.begin(), offsets.begin() + 1)),
-            [] CODE_CPU_CUDA (
+            [] GENLX_ARCH (
                 const thrust::tuple<offset_t, offset_t> &t) {
                 thrust::not_equal_to<offset_t> comp;
                 return comp(thrust::get<0>(t), thrust::get<1>(t));

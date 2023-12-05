@@ -11,7 +11,7 @@ class DenseVec : public Buffer<arch, value_t, index_t> {
 public:
     using Buffer<arch, value_t, index_t>::Buffer;
 
-    constexpr static arch_t arch_type = arch;
+    constexpr static arch_t arch_value = arch;
 
     void set(index_t i, const value_t& val) {
         archi::memcpy<arch, arch_t::cpu, value_t>(this->data_ + i, &val, 1);
@@ -26,7 +26,7 @@ public:
     std::string ToString() const {
         std::string str;
         str += "DenseVec{ ";
-        str += "arch_type:" + utils::ToString(arch_type) + ", ";
+        str += "arch_value:" + utils::ToString(arch_value) + ", ";
         str += "size_:" + utils::NumToString(this->size_) + ", ";
         str += "data_:[";
 

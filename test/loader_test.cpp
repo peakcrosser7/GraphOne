@@ -7,7 +7,7 @@ using namespace std;
 using namespace graph_genlx;
 
 int main() {
-    Loader<> loader(true, vstart_t::FROM_1_TO_1);
+    Loader<vstart_t::FROM_1_TO_1, true> loader;
     auto edges = loader.LoadEdgesFromTxt<int>("../data/sample/sample.adj");
     
     cout << "edge_cache:" <<

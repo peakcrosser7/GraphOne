@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "GraphGenlX/type.hpp"
 #include "GraphGenlX/mat/csr.h"
 
 namespace graph_genlx {
@@ -22,7 +23,8 @@ struct EdgeUnit {
     }
 };
 
-template <typename edata_t, 
+template <vstart_t v_start,
+          typename edata_t, 
           typename index_t,
           template<typename> class alloc_t = std::allocator>
 class EdgeCache : public std::vector<EdgeUnit<edata_t, index_t>, alloc_t<EdgeUnit<edata_t, index_t>>> {
@@ -46,7 +48,7 @@ public:
 
     template <arch_t arch, // cannot deduce
               typename offset_t = eid_t>
-    CsrMat<arch, edata_t, index_t, offset_t> ToCsr() const {
+    CsrMat<arch, edata_t, index_t, offset_t, v_start> ToCsr() const {
         auto edge_cache = *this;
 
         index_t n_rows = edge_cache.num_vertices();
@@ -86,14 +88,14 @@ public:
         }
 
         if constexpr (arch == arch_t::cpu) {
-            return CsrMat<arch, edata_t, index_t, offset_t>(
+            return CsrMat<arch, edata_t, index_t, offset_t, v_start>(
                 n_rows, n_cols, nnz,
                 std::move(row_offsets), 
                 std::move(col_indices),
                 std::move(values)
             );
         }
-        return CsrMat<arch, edata_t, index_t, offset_t>(
+        return CsrMat<arch, edata_t, index_t, offset_t, v_start>(
             n_rows, n_cols, nnz,
             row_offsets,    // use Buffer's copy ctor to convert from arch_t::cpu to arch 
             col_indices,

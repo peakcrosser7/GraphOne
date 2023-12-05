@@ -4,10 +4,12 @@
 
 #include <thrust/device_vector.h>
 
-#include "GraphGenlX/archi/archi.hpp"
+#include "GraphGenlX/archi/def.hpp"
 #include "GraphGenlX/debug/cuda.cuh"
 
-#define CODE_CPU_CUDA __host__ __device__
+#define GENLX_CUDA __device__
+#define GENLX_CPU_CUDA __host__ __device__
+#define GENLX_CPU_CUDA_INL __host__ __device__ __forceinline__
 
 namespace graph_genlx::archi {
 
@@ -72,5 +74,12 @@ struct memcpy_t<arch_t::cuda, arch_t::cuda> {
     }
 };
 
+template <>
+struct memfill_t<arch_t::cuda> {
+    template <typename T>
+    static void call(T* ptr, size_t size, const T& value) {
+        thrust::fill(exec_policy<arch_t::cuda>, ptr, ptr + size, value);
+    }
+};
     
 } // namespace graph_genlx::archi

@@ -127,7 +127,7 @@ struct DenseMat<arch, value_t, index_t, layout_t::ROW_MAJOR, tile_t>
     : public StridedMat<arch, value_t, index_t, tile_t> {
     using strided_mat_t = StridedMat<arch, value_t, index_t, tile_t>;
 
-    constexpr static arch_t arch_type = arch;
+    constexpr static arch_t arch_value = arch;
 
     DenseMat() = default;
 
@@ -175,7 +175,7 @@ struct DenseMat<arch, value_t, index_t, layout_t::ROW_MAJOR, tile_t>
 
     std::string ToString() const {
         return "DenseMat{ " 
-            "arch_type:" + utils::ToString(arch_type) + ", " +
+            "arch_value:" + utils::ToString(arch_value) + ", " +
             "layout:ROW_MAJOR, " +
             "n_rows:" + utils::NumToString(n_rows) + ", " +
             "n_cols:" + utils::NumToString(n_cols) + ", " +
@@ -195,7 +195,7 @@ struct DenseMat<arch, value_t, index_t, layout_t::COL_MAJOR, tile_t>
     : public StridedMat<arch, value_t, index_t, tile_t> {
     using strided_mat_t = StridedMat<arch, value_t, index_t, tile_t>;
 
-    constexpr static arch_t arch_type = arch;
+    constexpr static arch_t arch_value = arch;
 
     DenseMat() = default;
 
@@ -243,7 +243,7 @@ struct DenseMat<arch, value_t, index_t, layout_t::COL_MAJOR, tile_t>
 
     std::string ToString() const {
         return "DenseMat{ "
-            "arch_type:" + utils::ToString(arch_type) + ", " +
+            "arch_value:" + utils::ToString(arch_value) + ", " +
             "layout:COL_MAJOR, " +
             "n_rows:" + utils::NumToString(n_rows) + ", " +
             "n_cols:" + utils::NumToString(n_cols) + ", " +

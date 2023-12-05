@@ -12,7 +12,7 @@ template <arch_t arch,
           typename label_t = int32_t,
           typename index_t = uint32_t>
 struct vprop_t {
-    constexpr static arch_t arch_type = arch;
+    constexpr static arch_t arch_value = arch;
 
     vprop_t() = default;
     vprop_t(index_t num_vertices, index_t feat_dim) 

@@ -11,9 +11,11 @@ namespace graph_genlx {
 template <arch_t arch,
           typename value_t,
           typename index_t = uint32_t,
-          typename offset_t = uint64_t>
+          typename offset_t = uint64_t,
+          vstart_t v_start = vstart_t::FROM_0_TO_0>
 struct CsrMat {
-    constexpr static arch_t arch_type = arch;
+    constexpr static arch_t arch_value = arch;
+    constexpr static vstart_t vstart_value = v_start;
 
     CsrMat() = default;
 
@@ -37,7 +39,7 @@ struct CsrMat {
 
     std::string ToString() const {
         return "CsrMat{ "
-            "arch_type:" + utils::ToString(arch_type) + ", " +
+            "arch_value:" + utils::ToString(arch_value) + ", " +
             "n_rows:" + utils::NumToString(n_rows) + ", " +
             "n_cols:" + utils::NumToString(n_cols) + ", " +
             "nnz:" + utils::NumToString(nnz) + ", " +

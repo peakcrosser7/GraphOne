@@ -16,12 +16,6 @@
 
 namespace graph_genlx {
 
-enum class vstart_t {
-    FROM_0_TO_0,
-    FROM_0_TO_1,
-    FROM_1_TO_1
-};
-
 struct LoadEdgeOpts {
     std::string file_ext = ".adj";
     std::string comment_prefix = "#";
@@ -42,18 +36,19 @@ struct LoadVertexOpts {
     std::string vdata_sep = " ";
 };
 
-template <typename index_t = vid_t>
+template <vstart_t v_start = vstart_t::FROM_0_TO_0,
+          bool reorder_vid = true, 
+          typename index_t = vid_t>
 class Loader {
-public:
-    explicit Loader(bool reorder_vid = true, vstart_t vid_start = vstart_t::FROM_0_TO_0) 
-        : reorder_vid_(reorder_vid), vid_start_(vid_start) {
-        if (vid_start != vstart_t::FROM_0_TO_0) {
-            ++new_vid_;
+  public:
+    Loader() {
+        if constexpr (v_start != vstart_t::FROM_0_TO_0) {
+            new_vid_ = 1;
         }
     }
 
     template <typename edata_t> // cannot deduce
-    EdgeCache<edata_t, index_t> LoadEdgesFromTxt(const std::string& filepath,
+    EdgeCache<v_start, edata_t, index_t> LoadEdgesFromTxt(const std::string& filepath,
         const LoadEdgeOpts& opts = LoadEdgeOpts()) {
         if (!utils::StrEndWith(filepath, opts.file_ext)) {
             LOG_ERROR << "file extension does not match, it should \""
@@ -67,7 +62,7 @@ public:
             exit(1);
         }
 
-        EdgeCache<edata_t, index_t> edge_cache;
+        EdgeCache<v_start, edata_t, index_t> edge_cache;
         size_t init_cap = (1 << 12) / sizeof(EdgeUnit<edata_t, index_t>);
         edge_cache.reserve(init_cap);
 
@@ -129,7 +124,7 @@ public:
     }
 
     template <arch_t arch, typename edata_t = double, typename offset_t = eid_t> // cannot deduce
-    CsrMat<arch, edata_t, index_t, offset_t> 
+    CsrMat<arch, edata_t, index_t, offset_t, v_start> 
     LoadCsrFromTxt(const std::string& filepath, const LoadEdgeOpts& opts = LoadEdgeOpts()) {
         return LoadEdgesFromTxt<edata_t>(filepath, opts)
             .template ToCsr<arch, offset_t>();
@@ -165,7 +160,7 @@ public:
                 continue;
             }
             auto vertex = index_t(std::strtoul(pToken, nullptr, 10));
-            if (reorder_vid_) {
+            if constexpr (reorder_vid) {
                 vertex = ReorderVID_(vertex);
             }
 
@@ -245,17 +240,17 @@ protected:
                 && edge.src == edge.dst) {
             return false;
         }
-        if (vid_start_ == vstart_t::FROM_0_TO_1) {
+        if constexpr (v_start == vstart_t::FROM_0_TO_1) {
             ++edge.src;
             ++edge.dst;
         }
         // 对于从1起始的结点过滤0号结点
-        if (vid_start_ == vstart_t::FROM_1_TO_1
+        if (v_start == vstart_t::FROM_1_TO_1
                 && (edge.src == 0 || edge.dst == 0)) {
             return false;
         }
 
-        if (reorder_vid_ == true) {
+        if constexpr (reorder_vid == true) {
             edge.src = ReorderVID_(edge.src);
             edge.dst = ReorderVID_(edge.dst);
         }
@@ -274,20 +269,20 @@ protected:
     }
 
     template <typename edata_t>
-    void AfterAllEdges_(EdgeCache<edata_t, index_t>& edge_cache, const LoadEdgeOpts& opts) {
+    void AfterAllEdges_(EdgeCache<v_start, edata_t, index_t>& edge_cache, const LoadEdgeOpts& opts) {
         if (opts.keep_duplicate_edges == false) {
             std::sort(edge_cache.begin(), edge_cache.end());
             edge_cache.erase(std::unique(edge_cache.begin(), edge_cache.end()), edge_cache.end());
         }
     }
 
-    /// 是否对结点重排序,默认重排
-    bool reorder_vid_{true};
-    /// 结点ID从0起始转换为从1起始,默认不是(即0到0或1到1,无需额外调整)
-    vstart_t vid_start_{vstart_t::FROM_0_TO_0};
+    // /// 是否对结点重排序,默认重排
+    // bool reorder_vid_{true};
+    // /// 结点ID从0起始转换为从1起始,默认不是(即0到0或1到1,无需额外调整)
+    // vstart_t vid_start_{vstart_t::FROM_0_TO_0};
 
     index_t new_vid_{0};
     std::unordered_map<index_t, index_t> vid_map_{};
 };
-    
+
 } // namespace graph_genlx
