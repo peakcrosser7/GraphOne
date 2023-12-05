@@ -5,7 +5,8 @@
 
 #include "GraphGenlX/type.hpp"
 #include "GraphGenlX/utils.h"
-#include "GraphGenlX/archi.h"
+#include "GraphGenlX/archi/mem/mem.h"
+#include "GraphGenlX/archi/thrust/thrust.h"
 
 namespace graph_genlx {
 
@@ -126,6 +127,23 @@ public:
 
     index_t size() const {
         return size_;
+    }
+
+    void fill(const value_t& value) {
+        archi::fill(archi::exec_policy<arch>, data_, size_, value);
+    }
+
+    void reset() {
+        archi::memset<arch, value_t>(data_, size_, 0);
+    }
+
+    void reset(index_t size) {
+        if (size != size_) {
+            archi::memfree<arch, value_t>(data_);
+            data_ = archi::memalloc<arch, value_t>(size);
+            size_ = size;
+        }
+        archi::memset<arch, value_t>(data_, size, 0);
     }
 
     std::string ToString() const {

@@ -2,23 +2,9 @@
 
 #include <cstring>
 
-#include <thrust/execution_policy.h>
-#include <thrust/host_vector.h>
-
-#include "GraphGenlX/archi/def.hpp"
+#include "GraphGenlX/archi/mem/def.hpp"
 
 namespace graph_genlx::archi {
-
-template<>
-struct Vector_t<arch_t::cpu> {
-    template<typename value_t>
-    using type = thrust::host_vector<value_t>;
-};
-
-template<>
-struct ExecPolicy<arch_t::cpu> {
-    static constexpr decltype(thrust::host) value{};
-};
 
 template<>
 struct memalloc_t<arch_t::cpu> {
@@ -49,14 +35,6 @@ struct memcpy_t<arch_t::cpu, arch_t::cpu> {
     template <typename T>
     static void call(T* dst, const T* src, size_t size) {
         std::memcpy(dst, src, sizeof(T) * size);
-    }
-};
-
-template <>
-struct memfill_t<arch_t::cpu> {
-    template <typename T>
-    static void call(T* ptr, size_t size, const T& value) {
-        thrust::fill(exec_policy<arch_t::cpu>, ptr, ptr + size, value);
     }
 };
 

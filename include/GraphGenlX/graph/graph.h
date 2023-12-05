@@ -68,19 +68,19 @@ public:
         return csc_.nnz;
     }
 
-    GENLX_ARCH_INL
+    __GENLX_ARCH_INL__
     typename std::enable_if_t<has_csr_, edge_t>
     get_out_degree(vertex_t vid) const {
         return csr_.row_offsets[vid + 1] - csr_.row_offsets[vid];
     }
 
-    GENLX_ARCH_INL
+    __GENLX_ARCH_INL__
     typename std::enable_if_t<has_csc_, edge_t>
     get_in_degree(vertex_t vid) const {
         return csc_.col_offsets[vid + 1] - csc_.col_offsets[vid];
     }
 
-    GENLX_ARCH_INL edge_t get_degree(vertex_t vid) const {
+    __GENLX_ARCH_INL__ edge_t get_degree(vertex_t vid) const {
         if constexpr (has_csr_) {
             return get_out_degree(vid);
         } 

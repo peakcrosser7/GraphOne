@@ -54,7 +54,7 @@ struct numeric_limits<
 
 template <vstart_t v_start, // cannot deduce
           typename vertex_t>
-constexpr GENLX_ARCH_INL bool IsVertexValid(vertex_t vid) {
+constexpr __GENLX_ARCH_INL__ bool IsVertexValid(vertex_t vid) {
     static_assert(std::is_integral_v<vertex_t>, 
                   "vertex_t must be an intergral type");
     if constexpr (v_start == vstart_t::FROM_0_TO_0) {
