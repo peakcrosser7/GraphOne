@@ -26,43 +26,42 @@ struct ExecPolicy {};
 template <arch_t arch>
 constexpr auto exec_policy = archi::ExecPolicy<arch>::value;
 
-template <typename Policy, typename ForwardIterator, typename T>
-void fill(const Policy &exec, ForwardIterator first, ForwardIterator last,
-          const T &value) {
-    thrust::fill(exec, first, last, value);
+template <arch_t arch, typename ForwardIterator, typename T>
+void fill(ForwardIterator first, ForwardIterator last, const T &value) {
+    thrust::fill(exec_policy<arch>, first, last, value);
 }
 
-template <typename Policy, typename InputIterator1, typename InputIterator2,
+template <arch_t arch, typename InputIterator1, typename InputIterator2,
           typename InputIterator3, typename RandomAccessIterator>
-void scatter_if(const Policy &exec, InputIterator1 first, InputIterator1 last,
-                InputIterator2 map, InputIterator3 stencil,
-                RandomAccessIterator output) {
-    thrust::scatter_if(exec, first, last, map, stencil, output);
+void scatter_if(InputIterator1 first, InputIterator1 last, InputIterator2 map,
+                InputIterator3 stencil, RandomAccessIterator output) {
+    thrust::scatter_if(exec_policy<arch>, first, last, map, stencil, output);
 }
 
-template <typename Policy, typename InputIterator, typename OutputIterator,
+template <arch_t arch, typename InputIterator, typename OutputIterator,
           typename AssociativeOperator>
-OutputIterator inclusive_scan(const Policy &exec, InputIterator first,
-                              InputIterator last, OutputIterator result,
+OutputIterator inclusive_scan(InputIterator first, InputIterator last,
+                              OutputIterator result,
                               AssociativeOperator binary_op) {
-    return thrust::inclusive_scan(exec, first, last, result, binary_op);
+    return thrust::inclusive_scan(exec_policy<arch>, first, last, result,
+                                  binary_op);
 }
 
-template <typename Policy, typename ForwardIterator, typename InputIterator,
+template <arch_t arch, typename ForwardIterator, typename InputIterator,
           typename OutputIterator>
-OutputIterator lower_bound(const Policy &exec, ForwardIterator first,
-                           ForwardIterator last, InputIterator values_first,
+OutputIterator lower_bound(ForwardIterator first, ForwardIterator last,
+                           InputIterator values_first,
                            InputIterator values_last, OutputIterator output) {
-    return thrust::lower_bound(exec, first, last, values_first, values_last,
-                               output);
+    return thrust::lower_bound(exec_policy<arch>, first, last, values_first,
+                               values_last, output);
 }
 
-template <typename Policy, typename RandomAccessIterator1,
+template <arch_t arch, typename RandomAccessIterator1,
           typename RandomAccessIterator2>
-void sort_by_key(const Policy &exec, RandomAccessIterator1 keys_first,
+void sort_by_key(RandomAccessIterator1 keys_first,
                  RandomAccessIterator1 keys_last,
                  RandomAccessIterator2 values_first) {
-    thrust::sort_by_key(exec, keys_first, keys_last, values_first);
+    thrust::sort_by_key(exec_policy<arch>, keys_first, keys_last, values_first);
 }
 
 } // namespace archi

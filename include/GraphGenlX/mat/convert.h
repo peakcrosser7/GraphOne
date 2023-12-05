@@ -23,8 +23,7 @@ Buffer<arch, index_t, offset_t> OffsetsToIndices(
 
     // 将偏移值散列到索引的最高位置
     // 如:offsets[0, 2, 2, 3, 5, 5, 5, 7, 8]得到indices[0, 0, 2, 3, 0, 6, 0, 7]
-    archi::scatter_if(
-        archi::exec_policy<arch>,                                  // execution policy
+    archi::scatter_if<arch>(
         thrust::counting_iterator<offset_t>(0),       // begin iterator
         thrust::counting_iterator<offset_t>(indices_size - 1), // end iterator
         offsets.begin(),                              // where to scatter
@@ -40,9 +39,9 @@ Buffer<arch, index_t, offset_t> OffsetsToIndices(
 
     // 前缀最大值运算,将上述操作散列的一个索引值分散成多个,从而转换成索引
     // 如:indices[0, 0, 2, 3, 0, 6, 0, 7]得到indices[0, 0, 2, 3, 3, 6, 6, 7]
-    archi::inclusive_scan(archi::exec_policy<arch>, indices.begin(), indices.end(),
-                           indices.begin(), thrust::maximum<offset_t>());
-    
+    archi::inclusive_scan<arch>(indices.begin(), indices.end(), indices.begin(),
+                                thrust::maximum<offset_t>());
+
     return indices;
 }
 
@@ -54,10 +53,9 @@ Buffer<arch, offset_t, index_t> IndicesToOffsets(
     Buffer<arch, offset_t, index_t> offsets(offsets_size);
     // convert uncompressed indices into compressed offsets
     // 如:indices[0, 0, 2, 3, 3, 6, 6, 7]得到offsets[0, 2, 2, 3, 5, 5, 5, 7, 8]
-    archi::lower_bound(archi::exec_policy<arch>, indices.begin(), indices.end(),
-                        thrust::counting_iterator<offset_t>(0),
-                        thrust::counting_iterator<offset_t>(offsets_size),
-                        offsets.begin());
+    archi::lower_bound<arch>(
+        indices.begin(), indices.end(), thrust::counting_iterator<offset_t>(0),
+        thrust::counting_iterator<offset_t>(offsets_size), offsets.begin());
     return offsets;
 }
 
@@ -75,7 +73,7 @@ ToCsc(const CsrMat<arch, value_t, index_t, offset_t>& csr) {
     auto zip_it = thrust::make_zip_iterator(
         thrust::make_tuple(row_indices.begin(), values.begin())
     );
-    archi::sort_by_key(archi::exec_policy<arch>, col_indices.begin(), col_indices.end(), zip_it);
+    archi::sort_by_key<arch>(col_indices.begin(), col_indices.end(), zip_it);
 
     Buffer<arch, offset_t, index_t> col_offsets = 
         mat::IndicesToOffsets(col_indices, csr.n_cols + 1);

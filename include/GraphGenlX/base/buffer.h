@@ -6,7 +6,6 @@
 #include "GraphGenlX/type.hpp"
 #include "GraphGenlX/utils.h"
 #include "GraphGenlX/archi/mem/mem.h"
-#include "GraphGenlX/archi/thrust/thrust.h"
 
 namespace graph_genlx {
 
@@ -127,10 +126,6 @@ public:
 
     index_t size() const {
         return size_;
-    }
-
-    void fill(const value_t& value) {
-        archi::fill(archi::exec_policy<arch>, data_, size_, value);
     }
 
     void reset() {
