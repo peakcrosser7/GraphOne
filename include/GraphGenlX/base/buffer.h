@@ -49,15 +49,6 @@ public:
         archi::memcpy<arch, arch_t::cpu, value_t>(data_ + start, vec.data(), len);
     }
 
-    // template <arch_t from_arch>
-    // void copy_from(const Buffer<from_arch, value_t, index_t>& src_buf) {
-    //     *this = src_buf;
-    // }
-
-    // void move_from(Buffer<arch, value_t, index_t>& src_buf) {
-    //     *this = std::move(src_buf);
-    // }
-
     Buffer& operator= (const Buffer& rhs) {
         if (this == &rhs) {
             return *this;

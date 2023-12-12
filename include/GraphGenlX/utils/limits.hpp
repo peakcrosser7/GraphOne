@@ -4,7 +4,6 @@
 #include <limits>
 
 #include "GraphGenlX/type.hpp"
-#include "GraphGenlX/archi/archi.h"
 
 namespace graph_genlx::utils {
 
@@ -54,13 +53,21 @@ struct numeric_limits<
 
 template <vstart_t v_start, // cannot deduce
           typename vertex_t>
-constexpr __GENLX_ARCH_INL__ bool IsVertexValid(vertex_t vid) {
+constexpr bool is_vertex_valid(vertex_t vid) {
     static_assert(std::is_integral_v<vertex_t>, 
                   "vertex_t must be an intergral type");
     if constexpr (v_start == vstart_t::FROM_0_TO_0) {
         return (vid != utils::numeric_limits<vertex_t>::invalid());
     } 
     return (vid != 0);
+}
+
+template <vstart_t v_start, typename vertex_t>
+constexpr vertex_t invalid_vertex() {
+    if constexpr (v_start == vstart_t::FROM_0_TO_0) {
+        return utils::numeric_limits<vertex_t>::invalid();
+    } 
+    return 0;
 }
     
 } // namespace graph_genlx::utils

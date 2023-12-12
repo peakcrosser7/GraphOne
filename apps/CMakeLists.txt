@@ -1,0 +1,1 @@
+add_cuda_exec(sssp sssp.cu)

@@ -26,7 +26,6 @@ bool StrEndWith(const std::string& str, const std::string& suffix) {
     return true;
 }
 
-
 bool StrStartWith(const std::string& str, const std::string& prefix) {
     auto pref_size = prefix.size();
     if (pref_size == 0) {

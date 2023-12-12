@@ -5,7 +5,7 @@
 namespace graph_genlx {
 
 enum class graph_view_t : uint8_t {
-    none = 1 << 0,
+    none    = 1 << 0,
     csr     = 1 << 1,
     csc     = 1 << 2,
     coo     = 1 << 3

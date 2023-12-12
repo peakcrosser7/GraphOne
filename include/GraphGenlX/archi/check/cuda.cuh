@@ -5,7 +5,7 @@
 namespace graph_genlx {
 
 template <typename T>
-void CheckCuda(T result, char const *const func, const char *const file,
+void CheckCudaErr(T result, char const *const func, const char *const file,
            int const line) {
 #ifdef CUDA_DEBUG
   if (result) {
@@ -16,6 +16,6 @@ void CheckCuda(T result, char const *const func, const char *const file,
 #endif
 }
 
-#define checkCudaErrors(val) CheckCuda((val), #val, __FILE__, __LINE__)
+#define checkCudaErrors(val) CheckCudaErr((val), #val, __FILE__, __LINE__)
 
 } // namespace graph_genlx

@@ -3,7 +3,7 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 
-#include "GraphGenlX/debug/cuda.cuh"
+#include "GraphGenlX/archi/check/cuda.cuh"
 #include "GraphGenlX/archi/mem/def.hpp"
 
 namespace graph_genlx::archi {

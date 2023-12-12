@@ -1,11 +1,6 @@
 #pragma once 
 
 #include <thrust/execution_policy.h>
-#include <thrust/fill.h>
-#include <thrust/scatter.h>
-#include <thrust/scan.h>
-#include <thrust/binary_search.h>
-#include <thrust/sort.h>
 
 #include "GraphGenlX/type.hpp"
 
@@ -24,45 +19,7 @@ using vector_t = typename archi::Vector_t<arch>::template type<value_t>;
 template <arch_t arch>
 struct ExecPolicy {};
 template <arch_t arch>
-constexpr auto exec_policy = archi::ExecPolicy<arch>::value;
-
-template <arch_t arch, typename ForwardIterator, typename T>
-void fill(ForwardIterator first, ForwardIterator last, const T &value) {
-    thrust::fill(exec_policy<arch>, first, last, value);
-}
-
-template <arch_t arch, typename InputIterator1, typename InputIterator2,
-          typename InputIterator3, typename RandomAccessIterator>
-void scatter_if(InputIterator1 first, InputIterator1 last, InputIterator2 map,
-                InputIterator3 stencil, RandomAccessIterator output) {
-    thrust::scatter_if(exec_policy<arch>, first, last, map, stencil, output);
-}
-
-template <arch_t arch, typename InputIterator, typename OutputIterator,
-          typename AssociativeOperator>
-OutputIterator inclusive_scan(InputIterator first, InputIterator last,
-                              OutputIterator result,
-                              AssociativeOperator binary_op) {
-    return thrust::inclusive_scan(exec_policy<arch>, first, last, result,
-                                  binary_op);
-}
-
-template <arch_t arch, typename ForwardIterator, typename InputIterator,
-          typename OutputIterator>
-OutputIterator lower_bound(ForwardIterator first, ForwardIterator last,
-                           InputIterator values_first,
-                           InputIterator values_last, OutputIterator output) {
-    return thrust::lower_bound(exec_policy<arch>, first, last, values_first,
-                               values_last, output);
-}
-
-template <arch_t arch, typename RandomAccessIterator1,
-          typename RandomAccessIterator2>
-void sort_by_key(RandomAccessIterator1 keys_first,
-                 RandomAccessIterator1 keys_last,
-                 RandomAccessIterator2 values_first) {
-    thrust::sort_by_key(exec_policy<arch>, keys_first, keys_last, values_first);
-}
+static const __GENLX_DEV__ auto exec_policy = archi::ExecPolicy<arch>::value;
 
 } // namespace archi
 
