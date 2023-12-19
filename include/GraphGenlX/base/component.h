@@ -7,7 +7,8 @@
 namespace graph_genlx {
 
 template <typename graph_t,
-        typename status_t,
+        typename hstatus_t,
+        typename dstatus_t,
         typename frontier_t>
 struct ComponentX {
     
@@ -21,24 +22,28 @@ struct ComponentX {
         frontier.BeforeEngine(graph);
     }
 
-    void Filter() {
-
+    void AfterEngine() {
+        frontier.AfterEngine();
     }
 
     const graph_t& graph;
-    status_t& status;
+    hstatus_t& h_status;
+    // use reference will occur an
+    dstatus_t& d_status;
     frontier_t& frontier;
 };
 
 namespace compx {
 
-template <template <typename, typename, typename> class comp_t, 
+template <template <typename, typename, typename, typename> class comp_t,
           typename graph_t, 
-          typename status_t,
+          typename hstatus_t, 
+          typename dstatus_t,
           typename frontier_t>
-comp_t<graph_t, status_t, frontier_t> 
-build(const graph_t &graph, status_t &status, frontier_t &frontier) {
-    return comp_t<graph_t, status_t, frontier_t>{graph, status, frontier};
+comp_t<graph_t, hstatus_t, dstatus_t, frontier_t>
+build(const graph_t &graph, hstatus_t &h_status, dstatus_t& d_status, frontier_t &frontier) {
+    return comp_t<graph_t, hstatus_t, dstatus_t, frontier_t>{
+        graph, h_status, d_status, frontier};
 }
 
 } // namespace comp

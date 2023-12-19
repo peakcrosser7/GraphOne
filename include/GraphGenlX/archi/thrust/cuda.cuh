@@ -8,7 +8,7 @@
 namespace graph_genlx::archi {
 
 template<>
-struct Vector_t<arch_t::cuda> {
+struct ThrustVec<arch_t::cuda> {
     template<typename value_t>
     using type = thrust::device_vector<value_t>;
 };

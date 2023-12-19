@@ -58,16 +58,18 @@ constexpr bool is_vertex_valid(vertex_t vid) {
                   "vertex_t must be an intergral type");
     if constexpr (v_start == vstart_t::FROM_0_TO_0) {
         return (vid != utils::numeric_limits<vertex_t>::invalid());
-    } 
-    return (vid != 0);
+    } else {
+        return (vid != 0);
+    }
 }
 
 template <vstart_t v_start, typename vertex_t>
 constexpr vertex_t invalid_vertex() {
     if constexpr (v_start == vstart_t::FROM_0_TO_0) {
         return utils::numeric_limits<vertex_t>::invalid();
-    } 
-    return 0;
+    } else {
+        return 0;
+    }
 }
     
 } // namespace graph_genlx::utils

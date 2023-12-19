@@ -20,31 +20,38 @@ struct LaunchTparams<arch_t::cuda> {
     constexpr static uint32_t block_size = kBlockSize;
     constexpr static uint32_t warp_size = 32;
     
-    __GENLX_CUDA_INL__ static uint32_t grid_dim() {
+    __GENLX_CUDA_INL__ 
+    static uint32_t grid_dim() {
         return gridDim.x;
     }
 
-    __GENLX_CUDA_INL__ static uint32_t block_id() {
+    __GENLX_CUDA_INL__ 
+    static uint32_t block_id() {
         return blockIdx.x;
     }
 
-    __GENLX_CUDA_INL__ constexpr static uint32_t block_dim() {
+    __GENLX_CUDA_INL__ 
+    constexpr static uint32_t block_dim() {
         return block_size;
     }
 
-    __GENLX_CUDA_INL__ static uint32_t thread_id() {
+    __GENLX_CUDA_INL__ 
+    static uint32_t thread_id() {
         return threadIdx.x;
     }
 
-    __GENLX_CUDA_INL__ static uint32_t global_tid() {
+    __GENLX_CUDA_INL__ 
+    static uint32_t global_tid() {
         return block_id() * block_dim() + thread_id();
     }
 
-    __GENLX_CUDA_INL__ static uint32_t warp_id() {
+    __GENLX_CUDA_INL__ 
+    static uint32_t warp_id() {
         return (global_tid() >> 5);
     }
 
-    __GENLX_CUDA_INL__ static uint32_t lane_id () {
+    __GENLX_CUDA_INL__ 
+    static uint32_t lane_id () {
         return (thread_id() & 0x1f);
     }
 };
@@ -73,6 +80,10 @@ struct Launcher<arch_t::cuda> {
         func<<<params.grid_dim, tparams::block_size, params.smem_bytes,
                  params.stream>>>(std::forward<args_t>(args)...);
         return cudaGetLastError();
+    }
+
+    static err_t sync(cudaStream_t stream = 0) {
+        return stream ? cudaStreamSynchronize(stream) : cudaDeviceSynchronize();
     }
 };
 

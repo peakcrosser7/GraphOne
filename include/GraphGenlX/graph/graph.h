@@ -27,8 +27,8 @@ protected:
     constexpr static bool has_csr_ = has_view(views, graph_view_t::csr);
     constexpr static bool has_csc_ = has_view(views, graph_view_t::csc);
 
-    using csr_t = CsrMat<arch, weight_t, vertex_t, edge_t>;
-    using csc_t = CscMat<arch, weight_t, vertex_t, edge_t>;
+    using csr_t = CsrMat<arch, weight_t, vertex_t, edge_t, v_start>;
+    using csc_t = CscMat<arch, weight_t, vertex_t, edge_t, v_start>;
 
     using csr_or_ept_t = std::conditional_t<has_csr_, csr_t, empty_t>;
     using csc_or_ept_t = std::conditional_t<has_csc_, csc_t, empty_t>;
@@ -55,36 +55,39 @@ public:
         }
 
         __GENLX_DEV_INL__ 
-        edge_t get_starting_edge(vertex_t vid) const {
+        typename std::conditional_t<has_csr_ || has_csc_, edge_t, void>
+        get_starting_edge(vertex_t vid) const {
             if constexpr (has_csr_) {
                 return row_offsets[vid];
-            } 
-            if constexpr (has_csc_) {
+            } else if constexpr (has_csc_) {
                 return col_offsets[vid];
+            } else {
+                return;
             }
-            return 0;
         }
 
         __GENLX_DEV_INL__
-        vertex_t get_dst_vertex(edge_t eid) const {
+        typename std::conditional_t<has_csr_ || has_csc_, vertex_t, void>
+        get_dst_vertex(edge_t eid) const {
             if constexpr (has_csr_) {
                 return col_indices[eid];
-            }
-            if constexpr (has_csc_) {
+            } else if constexpr (has_csc_) {
                 return row_indices[eid];
+            } else {
+                return;
             }
-            return 0;  
         }
 
         __GENLX_DEV_INL__
-        weight_t get_edge_weight(edge_t eid) const {
+        typename std::conditional_t<has_csr_ || has_csc_, weight_t, void>
+        get_edge_weight(edge_t eid) const {
             if constexpr (has_csr_) {
                 return csr_values[eid];
-            } 
-            if constexpr (has_csc_) {
+            } else if constexpr (has_csc_) {
                 return csc_values[eid];
+            } else {
+                return;
             }
-            return weight_t(0);
         }
 
         vertex_t num_vertices;

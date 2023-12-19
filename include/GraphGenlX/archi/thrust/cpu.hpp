@@ -7,7 +7,7 @@
 namespace graph_genlx::archi {
 
 template<>
-struct Vector_t<arch_t::cpu> {
+struct ThrustVec<arch_t::cpu> {
     template<typename value_t>
     using type = thrust::host_vector<value_t>;
 };

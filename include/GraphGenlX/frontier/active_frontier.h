@@ -14,11 +14,15 @@ template <arch_t arch,
 class ActiveFrontier {
 public:
     using vertex_type = vertex_t;
+    using index_type = index_t;
+
     constexpr static bool has_output = true;
 
     struct arch_ref_t {
         constexpr static bool has_output = ActiveFrontier::has_output;
-        
+        using vertex_type = vertex_t;
+        using index_type = index_t;
+
         __GENLX_DEV_INL__
         vertex_t get(index_t i) const {
             return frontiers[input_selector][i];
@@ -29,12 +33,21 @@ public:
             frontiers[!input_selector][i] = v;
         }
 
+        __GENLX_DEV_INL__
+        const vertex_t* input() const {
+            return frontiers[input_selector];
+        }
+
+        __GENLX_DEV_INL__
+        vertex_t* ouput() {
+            return frontiers[!input_selector];
+        }
+
         bool input_selector;
         vertex_t input_size;
         vertex_t output_size;
         vertex_t* frontiers[2];
     };
-
 
     ActiveFrontier() = default;
 
@@ -46,10 +59,15 @@ public:
     }
 
     void reset_output(vertex_t size) {
+        LOG_DEBUG("reset_output  ouput_size=", out_size_, 
+                  " output buf size=", frontiers_[!input_selector_].size(),
+                  " param size=", size);
         if (size > frontiers_[!input_selector_].size()) {
             frontiers_[!input_selector_].reset(size);
         }
         out_size_ = size;
+        LOG_DEBUG("reset_output end, new output_size=", out_size_,
+                  " output buf size=", frontiers_[!input_selector_].size());
     }
 
     void reset(vertex_t size) {
@@ -66,17 +84,29 @@ public:
 
     void swap_inout() {
         input_selector_ = !input_selector_;
+        std::swap(in_size_, out_size_);
     }
 
     bool empty() {
         return in_size_ == 0;
     }
 
+    const Buffer<arch, vertex_t, index_t>& input() const {
+        return frontiers_[input_selector_];
+    }
+
+    Buffer<arch, vertex_t, index_t>& output() {
+        return frontiers_[!input_selector_];
+    }
+
     template <typename graph_t>
-    typename graph_t::edge_type CaclOuputSize(const graph_t& g) const {
+    typename graph_t::edge_type CaclOuputSize(const graph_t& g) {
         using edge_t = typename graph_t::edge_type;
         auto graph_ref = g.ToArch();
-        auto v_degree_func = [=] __GENLX_ARCH__(const vertex_t &vid) {
+        auto frontier_ref = ToArch();
+        auto v_degree_func = [=] __GENLX_ARCH__ (const vertex_t &i) {
+                auto vid = frontier_ref.get(i);
+                archi::cuda::print("vid=%u, degree=%u\n", vid, graph_ref.get_degree(vid));
                 return (utils::is_vertex_valid<graph_t::vstart_value>(vid)
                             ? graph_ref.get_degree(vid) : 0);
         };
@@ -95,13 +125,23 @@ public:
         index_t sz = sizeof...(vids);
         reset_input(sz);
         int i = 0;
-        ((frontiers_[input_selector_][i++] = vids), ...);
+        if constexpr (arch == arch_t::cpu) {
+            ((frontiers_[input_selector_][i++] = vids), ...);
+        } else {
+            Buffer<arch_t::cpu, vertex_t, index_t> h_buf(sz);
+            ((h_buf[i++] = vids), ...);
+            frontiers_[input_selector_] = h_buf;
+        }  
     }
 
     template <typename graph_t>
     void BeforeEngine(const graph_t& g) {
         auto sz = CaclOuputSize(g);
         reset_output(sz);
+    }
+
+    void AfterEngine() {
+        swap_inout();
     }
 
     arch_ref_t ToArch() {

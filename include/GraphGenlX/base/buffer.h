@@ -79,12 +79,32 @@ public:
         return *this;
     }
 
-    value_t& operator[](index_t i) {
-        return data_[i];
+    typename std::conditional_t<arch==arch_t::cpu, const value_t&, value_t> 
+    operator[](index_t i) const {
+        if constexpr (arch == arch_t::cpu) {
+            return data_[i];
+        } else {
+            return get(i);
+        }
     }
 
-    const value_t& operator[](index_t i) const {
-        return data_[i];
+    typename std::conditional_t<arch==arch_t::cpu, value_t&, void> 
+    operator[](index_t i) {
+        if constexpr (arch == arch_t::cpu) {
+            return data_[i];
+        } else {
+            return;
+        }
+    }
+
+    void set(index_t i, const value_t& val) {
+        archi::memcpy<arch, arch_t::cpu, value_t>(this->data_ + i, &val, 1);
+    }
+
+    value_t get(index_t i) const {
+        value_t val;
+        archi::memcpy<arch_t::cpu, arch, value_t>(&val, this->data_ + i, 1);
+        return val;
     }
 
     ~Buffer() {
@@ -130,6 +150,11 @@ public:
             size_ = size;
         }
         archi::memset<arch, value_t>(data_, size, 0);
+    }
+
+    template<arch_t to_arch>
+    Buffer<to_arch, value_t, index_t> to() const {
+        return Buffer<to_arch, value_t, index_t>(*this);
     }
 
     std::string ToString() const {

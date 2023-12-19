@@ -19,9 +19,9 @@ struct CooMat {
         : n_rows(n_rows), n_cols(n_cols) {}
     
     CooMat(index_t n_rows, index_t n_cols,
-        vector_t<arch, index_t>&& row_indices, 
-        vector_t<arch, index_t>&& col_indices,
-        vector_t<arch, value_t>&& values)
+        thrust_vec<arch, index_t>&& row_indices, 
+        thrust_vec<arch, index_t>&& col_indices,
+        thrust_vec<arch, value_t>&& values)
         : n_rows(n_rows), n_cols(n_cols), nnz(row_indices.size()),
           row_indices(std::move(row_indices)), 
           col_indices(std::move(col_indices)), 
@@ -42,9 +42,9 @@ struct CooMat {
     index_t n_cols{0};
     index_t nnz{0};
 
-    vector_t<arch, index_t> row_indices{};
-    vector_t<arch, index_t> col_indices{};
-    vector_t<arch, value_t> values{};
+    thrust_vec<arch, index_t> row_indices{};
+    thrust_vec<arch, index_t> col_indices{};
+    thrust_vec<arch, value_t> values{};
 };
 
 } // namespace graph_genlx

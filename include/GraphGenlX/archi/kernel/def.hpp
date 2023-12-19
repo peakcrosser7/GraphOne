@@ -22,4 +22,9 @@ typename Launcher<arch>::err_t LaunchKernel(const LaunchParams<arch> &params,
         params, f, std::forward<args_t>(args)...);
 }
 
+template <arch_t arch, typename... args_t>
+typename Launcher<arch>::err_t LaunchSync(args_t &&...args) {
+    return Launcher<arch>::sync(std::forward<args_t>(args)...);
+}
+
 } // namespace graph_genlx::archi

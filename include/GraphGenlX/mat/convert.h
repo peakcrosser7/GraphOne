@@ -62,9 +62,10 @@ Buffer<arch, offset_t, index_t> IndicesToOffsets(
 template <arch_t arch,
         typename value_t,
         typename index_t,
-        typename offset_t>
-CscMat<arch, value_t, index_t, offset_t>
-ToCsc(const CsrMat<arch, value_t, index_t, offset_t>& csr) {
+        typename offset_t,
+        vstart_t v_start>
+CscMat<arch, value_t, index_t, offset_t, v_start>
+ToCsc(const CsrMat<arch, value_t, index_t, offset_t, v_start>& csr) {
     Buffer<arch, index_t, offset_t> row_indices = 
         mat::OffsetsToIndices(csr.row_offsets, csr.nnz);
     Buffer<arch, index_t, offset_t> col_indices = csr.col_indices;
@@ -78,7 +79,7 @@ ToCsc(const CsrMat<arch, value_t, index_t, offset_t>& csr) {
     Buffer<arch, offset_t, index_t> col_offsets = 
         mat::IndicesToOffsets(col_indices, csr.n_cols + 1);
 
-    return CscMat<arch, value_t, index_t, offset_t>(
+    return CscMat<arch, value_t, index_t, offset_t, v_start>(
         csr.n_rows, csr.n_cols, csr.nnz,
         std::move(col_offsets), 
         std::move(row_indices),

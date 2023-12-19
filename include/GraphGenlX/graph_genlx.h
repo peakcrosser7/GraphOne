@@ -13,3 +13,4 @@
 #include "GraphGenlX/frontier/active_frontier.h"
 
 #include "GraphGenlX/base/run.h"
+#include "GraphGenlX/debug/backtrace.hpp"

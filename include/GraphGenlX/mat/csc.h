@@ -9,9 +9,11 @@ namespace graph_genlx {
 template <arch_t arch,
           typename value_t,
           typename index_t = uint32_t,
-          typename offset_t = uint64_t>
+          typename offset_t = uint64_t,
+          vstart_t v_start = vstart_t::FROM_0_TO_0>
 struct CscMat {
     constexpr static arch_t arch_value = arch;
+    constexpr static vstart_t vstart_value = v_start;
 
     CscMat() = default;
 

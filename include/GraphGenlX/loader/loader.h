@@ -51,15 +51,13 @@ class Loader {
     EdgeCache<v_start, edata_t, index_t> LoadEdgesFromTxt(const std::string& filepath,
         const LoadEdgeOpts& opts = LoadEdgeOpts()) {
         if (!utils::StrEndWith(filepath, opts.file_ext)) {
-            LOG_ERROR << "file extension does not match, it should \""
-                << opts.file_ext << "\"\n";
-            exit(1);
+            LOG_ERROR("file extension does not match, it should \"", 
+                opts.file_ext, "\"");
         }
 
         std::fstream fin(filepath);
         if (fin.fail()) {
-            LOG_ERROR << "cannot open graph adj file: " << filepath << std::endl;
-            exit(1);
+            LOG_ERROR("cannot open graph adj file: ", filepath);
         }
 
         EdgeCache<v_start, edata_t, index_t> edge_cache;
@@ -76,6 +74,11 @@ class Loader {
         char* pLog   = nullptr;
         while (fin.good() && !fin.eof()) {
             std::getline(fin, line);
+            line = utils::StrStrip(line);
+
+            if (line.empty()) {
+                continue;
+            }
             if (utils::StrStartWith(line, opts.comment_prefix)) {
                 continue;
             }
@@ -83,7 +86,7 @@ class Loader {
             pLog   = line.data();
             pToken = strtok_r(line.data(), opts.line_sep.c_str(), &pSave);
             if (nullptr == pToken) {
-                LOG_WARNING << "can not extract source from (" << pLog << ")\n";
+                LOG_WARNING("can not extract source from (", pLog, ")");
                 continue;
             }
             edge.src = index_t(std::strtoul(pToken, nullptr, 10));
@@ -91,7 +94,7 @@ class Loader {
             pLog = pToken;
             pToken = strtok_r(nullptr, opts.line_sep.c_str(), &pSave);
             if (nullptr == pToken) {
-                LOG_WARNING << "can not extract destination from (" << pLog << ")\n";
+                LOG_WARNING("can not extract destination from (", pLog, ")");
                 continue;
             }
             edge.dst = index_t(std::strtoul(pToken, nullptr, 10));
@@ -138,8 +141,7 @@ class Loader {
 
         std::fstream fin(filepath);
         if (fin.fail()) {
-            LOG_ERROR << "cannot open graph vertex file: " << filepath << std::endl;
-            exit(1);
+            LOG_ERROR("cannot open graph vertex file: ", filepath);
         }
 
         std::string line;
@@ -156,17 +158,17 @@ class Loader {
             pLog   = line.data();
             pToken = strtok_r(line.data(), opts.vertex_sep.c_str(), &pSave);
             if (nullptr == pToken) {
-                LOG_WARNING << "can not extract source from (" << pLog << ")\n";
+                LOG_WARNING("can not extract source from (", pLog, ")");
                 continue;
             }
             auto vertex = index_t(std::strtoul(pToken, nullptr, 10));
             if constexpr (reorder_vid) {
-                vertex = ReorderVID_(vertex);
+                vertex = ReorderVid_(vertex);
             }
 
             if constexpr (std::is_same_v<parse_t, char*>) {
                 if (parser(vertex, pSave) == false) {
-                    LOG_WARNING << "can not decode vertex data from (" << pLog << ")\n";
+                    LOG_WARNING("can not decode vertex data from (", pLog, ")");
                     continue;
                 }
             } else {
@@ -189,8 +191,8 @@ class Loader {
                 }
 
                 if (parser(vertex, splits) == false) {
-                    LOG_WARNING << "can not decode vertex data from  vertex:" 
-                        << utils::VecToString(splits) << "\n";
+                    LOG_WARNING("can not decode vertex data from  vertex:", 
+                        utils::VecToString(splits));
                     continue;
                 }
             }
@@ -221,11 +223,23 @@ class Loader {
         }
         return DenseVec<arch, vdata_t, index_t>(h_vprops);
     }
-    
 
+    /// @return wether find the vertex and reoreder
+    bool ReorderedVid(index_t& vid) const {
+        if constexpr (reorder_vid == false) {
+            return true;
+        }
+        auto it = vid_map_.find(vid);
+        if (it != vid_map_.end()) {
+            vid = it->second;
+            return true;
+        } 
+        return false;
+    }
+    
 protected:
 
-    index_t ReorderVID_(index_t vid) {
+    index_t ReorderVid_(index_t vid) {
         auto it = vid_map_.find(vid);
         if (it != vid_map_.end()) {
             return it->second;
@@ -251,8 +265,8 @@ protected:
         }
 
         if constexpr (reorder_vid == true) {
-            edge.src = ReorderVID_(edge.src);
-            edge.dst = ReorderVID_(edge.dst);
+            edge.src = ReorderVid_(edge.src);
+            edge.dst = ReorderVid_(edge.dst);
         }
 
         return true;
@@ -260,7 +274,7 @@ protected:
 
     template <typename edata_t>
     bool AfterEdge_(EdgeUnit<edata_t, index_t>& edge, const LoadEdgeOpts& opts) {
-        if (opts.is_directed == false) {
+        if (opts.is_directed == false && edge.src != edge.dst) {
             std::swap(edge.src, edge.dst);
             return true;
         }

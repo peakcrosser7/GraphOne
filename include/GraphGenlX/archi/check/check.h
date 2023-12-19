@@ -3,14 +3,14 @@
 #include "GraphGenlX/type.hpp"
 #include "GraphGenlX/archi/check/cuda.cuh"
 
-#define ARCH_DEBUG
+#define DEBUG_ARCH
 
 namespace graph_genlx {
 
 template <arch_t arch, typename T>
 void checkArchErr(T val, char const *const func, const char *const file,
            int const line) {
-#ifdef ARCH_DEBUG
+#ifdef DEBUG_ARCH
     if constexpr (arch == arch_t::cuda) {
         CheckCudaErr(val, func, file, line);
     }

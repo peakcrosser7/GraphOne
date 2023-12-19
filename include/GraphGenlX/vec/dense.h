@@ -13,16 +13,6 @@ public:
 
     constexpr static arch_t arch_value = arch;
 
-    void set(index_t i, const value_t& val) {
-        archi::memcpy<arch, arch_t::cpu, value_t>(this->data_ + i, &val, 1);
-    }
-
-    value_t get(index_t i) const {
-        value_t val;
-        archi::memcpy<arch_t::cpu, arch, value_t>(&val, this->data_ + i, 1);
-        return val;
-    }
-
     std::string ToString() const {
         std::string str;
         str += "DenseVec{ ";

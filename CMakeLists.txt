@@ -11,6 +11,12 @@ set(CMAKE_CXX_STANDARD 17)
 
 #set(CMAKE_BUILD_TYPE DEBUG)
 #set(CMAKE_BUILD_TYPE RELEASE)
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Release")
+  # set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+endif()
+message(STATUS "BuildType: ${CMAKE_BUILD_TYPE}")
+
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -Wall -g -ggdb")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -Wall")
 
@@ -22,6 +28,8 @@ else()
 endif()
 
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --extended-lambda --expt-relaxed-constexpr")
+set(CMAKE_CUDA_FLAGS_DEBUG "${CMAKE_CUDA_FLAGS_DEBUG} --debug --device-debug")
+set(CMAKE_CUDA_FLAGS_RELEASE "${CMAKE_CUDA_FLAGS_RELEASE} --use_fast_math")
 
 # add_library(graph_genlx INTERFACE)
 # set_target_properties(graph_genlx PROPERTIES

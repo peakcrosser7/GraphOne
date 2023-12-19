@@ -59,11 +59,11 @@ OutputType transform_reduce(InputIterator first, InputIterator last,
                                     init, binary_op);
 }
 
-template <arch_t arch, typename ForwardIterator, typename LessThanComparable>
-__GENLX_ARCH_INL__
-ForwardIterator upper_bound(ForwardIterator first, ForwardIterator last,
-                            const LessThanComparable &value) {
-    return thrust::upper_bound(exec_policy<arch>, first, last, value);
+template <arch_t arch, typename InputIterator, typename OutputIterator,
+          typename UnaryFunction>
+OutputIterator transform(InputIterator first, InputIterator last,
+                         OutputIterator result, UnaryFunction op) {
+    return thrust::transform(exec_policy<arch>, first, last, result, op);
 }
 
 } // namespace graph_genlx::archi
