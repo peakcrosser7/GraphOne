@@ -325,7 +325,7 @@ inline const shared_object backtrace_buffer::uknown_shared_object = {
 /// @tparam Signal 信号编号
 /// @tparam Func 处理函数
 template <int Signal, void (*Func)()>
-void install_oneshot_signal_handler() {
+void init_backtrace() {
     // 用于确保信号处理函数Func只被调用1次
     static bool handled = false;
     static std::mutex lock;
@@ -405,8 +405,8 @@ inline void install_oneshot_signal_handlers() {
     pthread_sigmask(SIG_BLOCK, &sigs, nullptr);
 
     // 添加信号SIGSEGV,SIGABRT的信号处理函数
-    install_oneshot_signal_handler<SIGSEGV, sigsegv_action>();
-    install_oneshot_signal_handler<SIGABRT, sigabrt_action>();
+    init_backtrace<SIGSEGV, sigsegv_action>();
+    init_backtrace<SIGABRT, sigabrt_action>();
 }
 
 }  // namespace graph_genlx

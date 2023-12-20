@@ -12,8 +12,8 @@ set(CMAKE_CXX_STANDARD 17)
 #set(CMAKE_BUILD_TYPE DEBUG)
 #set(CMAKE_BUILD_TYPE RELEASE)
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "Release")
-  # set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+    set(CMAKE_BUILD_TYPE "Release")
+    # set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
 endif()
 message(STATUS "BuildType: ${CMAKE_BUILD_TYPE}")
 
@@ -21,10 +21,10 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -Wall -g -ggdb")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -Wall")
 
 if(NOT CMAKE_CUDA_ARCHITECTURES)
-  set(CMAKE_CUDA_ARCHITECTURES 70)
-  message(STATUS "Using default GPU Architecture: ${CMAKE_CUDA_ARCHITECTURES}")
+    set(CMAKE_CUDA_ARCHITECTURES 70)
+    message(STATUS "Using default GPU Architecture: ${CMAKE_CUDA_ARCHITECTURES}")
 else()
-  message(STATUS "GPU Architecture: ${CMAKE_CUDA_ARCHITECTURES}")
+    message(STATUS "GPU Architecture: ${CMAKE_CUDA_ARCHITECTURES}")
 endif()
 
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --extended-lambda --expt-relaxed-constexpr")
@@ -42,15 +42,18 @@ set(CMAKE_CUDA_FLAGS_RELEASE "${CMAKE_CUDA_FLAGS_RELEASE} --use_fast_math")
 # )
 
 include_directories(include ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+add_subdirectory(third_party/nvtx3)
 
 macro (add_cuda_exec exec_name exec_file)
     # GPU代码
     add_executable(${exec_name} ${exec_file})
     # target_link_libraries(${exec_name} PRIVATE graph_genlx)
     set_target_properties(${exec_name} PROPERTIES 
+        CUDA_RESOLVE_DEVICE_SYMBOLS ON
         CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES}
         CUDA_SEPARABLE_COMPILATION ON
     )
+    target_link_libraries(${exec_name} PRIVATE nvtx3-cpp)
 endmacro (add_cuda_exec)
 
 add_subdirectory(apps)

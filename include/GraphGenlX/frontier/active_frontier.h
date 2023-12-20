@@ -51,23 +51,35 @@ public:
 
     ActiveFrontier() = default;
 
-    void reset_input(vertex_t size) {
+    void reserve_input(vertex_t size) {
         if (size > frontiers_[input_selector_].size()) {
             frontiers_[input_selector_].reset(size);
+        }
+    }
+
+    void reserve_output(vertex_t size) {
+        if (size > frontiers_[!input_selector_].size()) {
+            frontiers_[!input_selector_].reset(size);
+        }
+    }
+
+    void reset_input(vertex_t size) {
+        if (size > frontiers_[input_selector_].size()) {
+            frontiers_[input_selector_].reset(size * 2);
         }
         in_size_ = size;
     }
 
     void reset_output(vertex_t size) {
-        LOG_DEBUG("reset_output  ouput_size=", out_size_, 
-                  " output buf size=", frontiers_[!input_selector_].size(),
-                  " param size=", size);
+        // LOG_DEBUG("reset_output  ouput_size=", out_size_, 
+        //           " output buf size=", frontiers_[!input_selector_].size(),
+        //           " param size=", size);
         if (size > frontiers_[!input_selector_].size()) {
-            frontiers_[!input_selector_].reset(size);
+            frontiers_[!input_selector_].reset(size * 2);
         }
         out_size_ = size;
-        LOG_DEBUG("reset_output end, new output_size=", out_size_,
-                  " output buf size=", frontiers_[!input_selector_].size());
+        // LOG_DEBUG("reset_output end, new output_size=", out_size_,
+        //           " output buf size=", frontiers_[!input_selector_].size());
     }
 
     void reset(vertex_t size) {
@@ -106,7 +118,7 @@ public:
         auto frontier_ref = ToArch();
         auto v_degree_func = [=] __GENLX_ARCH__ (const vertex_t &i) {
                 auto vid = frontier_ref.get(i);
-                archi::cuda::print("vid=%u, degree=%u\n", vid, graph_ref.get_degree(vid));
+                // archi::cuda::print("vid=%u, degree=%u\n", vid, graph_ref.get_degree(vid));
                 return (utils::is_vertex_valid<graph_t::vstart_value>(vid)
                             ? graph_ref.get_degree(vid) : 0);
         };
@@ -121,8 +133,11 @@ public:
     }
 
     template <typename ...vids_t>
-    void Init(vids_t... vids) {
+    void Init(index_t size, vids_t... vids) {
         index_t sz = sizeof...(vids);
+        index_t max_sz = std::max(size, sz);
+        reserve_input(max_sz);
+        reserve_output(max_sz);
         reset_input(sz);
         int i = 0;
         if constexpr (arch == arch_t::cpu) {

@@ -37,11 +37,11 @@ struct SSSPComp : ComponentX<graph_t, hstatus_t, dstatus_t, frontier_t> {
 
         archi::fill<arch>(dists.begin(), dists.end(), std::numeric_limits<dist_t>::max());
         dists.set(src_vid, 0);
-        this->frontier.Init(src_vid);
+        this->frontier.Init(this->graph.num_vertices(), src_vid);
     }
 
-    void AfterEngine() {
-        comp_t::AfterEngine();
+    void BeforeEngine() {
+        comp_t::BeforeEngine();
         ++this->d_status.iter;
     }
 };
@@ -82,15 +82,15 @@ int main(int argc, char *argv[]) {
         printx("Usage: ", argv[0], " <graph_file> <src_vertex>");
         return -1;
     }
-    // install_oneshot_signal_handlers();
     
     vid_t src = std::stoi(argv[2]);
 
     Loader<vstart_t::FROM_1_TO_1, false> loader;
     LoadEdgeOpts opts;
+    opts.comment_prefix = "%";
     opts.is_directed = false;
     auto csr = loader.LoadCsrFromTxt<arch, int>(argv[1], opts);
-    auto g = graph::FromCsr<graph_view_t::csc>(std::move(csr));
+    auto g = graph::FromCsr<>(std::move(csr));
 
     if (!loader.ReorderedVid(src)) {
         LOG_ERROR("src vertex ", src, " not exist");
@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
     DenseVec<arch, vid_t> parents(g.num_vertices());
 
     sssp_hstatus_t h_status{src, dists, parents};
-    sssp_dstatus_t d_status{1, dists.data(), parents.data()};
+    sssp_dstatus_t d_status{0, dists.data(), parents.data()};
     ActiveFrontier<arch, vid_t> frontier;
 
     auto comp = compx::build<SSSPComp>(g, h_status, d_status, frontier);
@@ -113,7 +113,7 @@ int main(int argc, char *argv[]) {
     printx("Elapsed time: ", duration.count(), "ms");
  
     auto h_dists = dists.to<arch_t::cpu>();
-    for (int i = 0; i < h_dists.size(); ++i) {
+    for (int i = 0; i < min(500, h_dists.size()); ++i) {
         printx(i, "-", h_dists[i]);
     }
     return 0;

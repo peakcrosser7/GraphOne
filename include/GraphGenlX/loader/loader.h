@@ -109,6 +109,12 @@ class Loader {
                     } else {
                         edge.edata = edata_t(std::strtod(pToken, nullptr));
                     }
+                } else {
+                    if constexpr (std::is_arithmetic_v<edata_t>) {
+                        edge.edata = edata_t(1);
+                    } else {
+                        edge.edata = edata_t{};
+                    }
                 }
             }
 
@@ -123,6 +129,8 @@ class Loader {
         }
 
         AfterAllEdges_(edge_cache, opts);
+
+        // LOG_DEBUG("edge_info: ", "num_v=", edge_cache.num_vertices(), " num_e=", edge_cache.num_edges());
         return edge_cache;      
     }
 

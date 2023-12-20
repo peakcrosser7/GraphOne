@@ -5,6 +5,7 @@
 
 #include <cub/block/block_load.cuh>
 #include <cub/block/block_scan.cuh>
+// #include <nvtx3/nvtx3.hpp>
 
 #include "GraphGenlX/archi/macro/macro.h"
 #include "GraphGenlX/archi/check/check.h"
@@ -165,7 +166,9 @@ class AdvanceGC {
 protected:
     template <typename factor_t, typename graph_t, typename dstatus_t, typename frontier_t>
     static void
-    advance_engine(const graph_t& graph, dstatus_t& d_status, frontier_t& frontier) {   
+    advance_engine(const graph_t& graph, dstatus_t& d_status, frontier_t& frontier) {
+        // nvtx3::scoped_range r{"advance_engine"};
+
         constexpr arch_t arch = graph_t::arch_value;
         using tparams = archi::LaunchTparams<arch>;
         constexpr auto kernel = advance_engine_kernel<tparams, factor_t,
@@ -184,12 +187,8 @@ protected:
         )));
         archi::LaunchSync<arch>();
         
-        LOG_DEBUG("output_size: ", output_size.ToString());
-        LOG_DEBUG("output: ", frontier.output().ToString());
-
-        if constexpr (frontier_t::has_output) {
-            frontier.reset_output(output_size.get(0));
-        }
+        LOG_DEBUG("output_size: ", output_size);
+        LOG_DEBUG("output: ", frontier.output());
     }
 
     template <typename factor_t>
@@ -207,6 +206,7 @@ public:
 
     template <typename factor_t, typename graph_t, typename dstatus_t, typename frontier_t>
     static void filter_engine(const graph_t& graph, dstatus_t& d_status, frontier_t& frontier) {
+        // nvtx3::scoped_range r{"filter_engine"};
 
         if constexpr (!frontier_t::has_output || !HasFilter<factor_t>::value) {
             return;
@@ -243,6 +243,8 @@ public:
 
     template <typename factor_t, typename comp_t>
     static void Forward(comp_t& comp) {
+        // nvtx3::scoped_range r{"Forward"};
+
         advance_engine<factor_t>(comp.graph, comp.d_status, comp.frontier); 
         filter_engine<factor_t>(comp.graph, comp.d_status, comp.frontier);
     }

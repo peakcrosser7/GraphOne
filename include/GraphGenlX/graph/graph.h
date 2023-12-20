@@ -44,14 +44,15 @@ public:
         constexpr static vstart_t vstart_value = v_start;
         
         __GENLX_DEV_INL__ 
-        edge_t get_degree(vertex_t vid) const {
+        typename std::conditional_t<has_csr_ || has_csc_, edge_t, void>
+        get_degree(vertex_t vid) const {
             if constexpr (has_csr_) {
                 return row_offsets[vid + 1] - row_offsets[vid];
-            } 
-            if constexpr (has_csc_) {
+            } else if constexpr (has_csc_) {
                 return col_offsets[vid + 1] - col_offsets[vid];
+            } else {
+                return;
             }
-            return 0;
         }
 
         __GENLX_DEV_INL__ 
@@ -107,6 +108,7 @@ public:
 public:
     Graph(const csr_t& csr, const vprop_t& vprops)
     : csr_(csr), csc_(), vprops_(vprops) {
+        static_assert(has_csr_);
         if constexpr (has_csc_) {
             csc_ = mat::ToCsc(csr);
         }
@@ -114,6 +116,7 @@ public:
 
     Graph(csr_t&& csr, vprop_t&& vprops)
     : csr_(), csc_(), vprops_(std::move(vprops)) {
+        static_assert(has_csr_);
         if constexpr (has_csc_) {
             csc_ = mat::ToCsc(csr);
         }
@@ -124,34 +127,37 @@ public:
         return vprops_;
     }
 
-    vertex_t num_vertices() const {
+    typename std::conditional_t<has_csr_ || has_csc_, vertex_t, void>
+    num_vertices() const {
         if constexpr (has_csr_) {
             return csr_.n_rows;
-        }
-        if constexpr (has_csc_) {
+        } else if constexpr (has_csc_) {
             return csc_.n_rows;
+        } else {
+            return;
         }
-        return 0;
     }
 
-    edge_t num_edges() const {
+    typename std::conditional_t<has_csr_ || has_csc_, edge_t, void>
+    num_edges() const {
         if constexpr (has_csr_) {
             return csr_.nnz;
-        }
-        if constexpr (has_csc_) {
+        } else if constexpr (has_csc_) {
             return csc_.nnz;
+        } else {
+            return;
         }
-        return 0;
     }
 
-    edge_t get_degree(vertex_t vid) const {
+    typename std::conditional_t<has_csr_ || has_csc_, edge_t, void>
+    get_degree(vertex_t vid) const {
         if constexpr (has_csr_) {
             return csr_.row_offsets[vid + 1] - csr_.row_offsets[vid];
-        } 
-        if constexpr (has_csc_) {
+        } else if constexpr (has_csc_) {
             return csc_.col_offsets[vid + 1] - csc_.col_offsets[vid];
+        } else {
+            return;
         }
-        return 0;
     }
 
     arch_ref_t ToArch() const {
