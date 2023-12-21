@@ -88,12 +88,12 @@ int main(int argc, char *argv[]) {
     Loader<vstart_t::FROM_1_TO_1, false> loader;
     LoadEdgeOpts opts;
     opts.comment_prefix = "%";
-    opts.is_directed = false;
+    // opts.is_directed = true;
     auto csr = loader.LoadCsrFromTxt<arch, int>(argv[1], opts);
     auto g = graph::FromCsr<>(std::move(csr));
 
     if (!loader.ReorderedVid(src)) {
-        LOG_ERROR("src vertex ", src, " not exist");
+        LOG_ERROR("src vertex \"", src, "\" is not exist");
     }
     
     DenseVec<arch, dist_t> dists(g.num_vertices());

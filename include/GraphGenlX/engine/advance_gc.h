@@ -263,6 +263,9 @@ struct AdvanceFactor {
                  const weight_t &weight, dstatus_t& d_status) {
         return false;
     }
+
+    // __GENLX_DEV_INL__
+    // static bool filter(const vertex_t& vid, const dstatus_t& d_status) { return true; }
 };
     
 } // namespace graph_genlx
