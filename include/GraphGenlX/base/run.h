@@ -4,21 +4,30 @@
 
 namespace graph_genlx {
 
-template <typename factor_t, typename comp_t>
-void Run(comp_t& comp) {
-    using engine_t = typename factor_t::engine_type;
+template <typename functor_t, typename comp_t, typename frontier_t>
+void Run(comp_t& comp, frontier_t& frontier) {
+    using engine_t =
+        typename functor_t::engine_type<functor_t, comp_t, frontier_t>;
 
     LOG_DEBUG(">>>run App start...");
+    engine_t engine(comp, frontier);
+
     comp.Init();
     LOG_DEBUG(">>>comp initialized");
-    while (!comp.IsConvergent()) {
+
+    while (comp.IsConvergent() == false && frontier.IsConvergent() == false) {
         LOG_DEBUG(">>>iter:", comp.d_status.iter);
+
         comp.BeforeEngine();
-        LOG_DEBUG(">>>comp before engine proc done");
-        engine_t::template Forward<factor_t>(comp);
-        LOG_DEBUG(">>>comp Forward done");
+        frontier.BeforeEngine();
+        LOG_DEBUG(">>>before engine proc done");
+
+        engine.Forward();
+        LOG_DEBUG(">>>Forward done");
+
+        frontier.AfterEngine();
         comp.AfterEngine();
-        LOG_DEBUG(">>>comp after engine proc done\n");
+        LOG_DEBUG(">>>after engine proc done\n");
     }
 }
 

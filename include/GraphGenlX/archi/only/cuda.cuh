@@ -2,10 +2,11 @@
 
 #include <cuda.h>
 
+#include "GraphGenlX/archi/macro/cuda.cuh"
 
 namespace graph_genlx::archi::cuda {
 
-__device__
+__GENLX_CUDA__
 inline char* strncat(char* dest, const char* src, unsigned n) {
     int i = 0;
     while (dest[i] != 0) {
@@ -21,7 +22,7 @@ inline char* strncat(char* dest, const char* src, unsigned n) {
 }
 
 template <typename ... Ts>
-__device__
+__GENLX_CUDA_INL__
 void print(const char* fmt, Ts&&... args) {
 #if defined(DEBUG_CUDA) && defined(DEBUG_LOG)
     char buf[256] = "[DEBUG-KERNEL] ";
@@ -30,15 +31,30 @@ void print(const char* fmt, Ts&&... args) {
 #endif
 }
 
+template <typename IT, typename T>
+__GENLX_CUDA_INL__
+IT UpperBound(IT begin, IT end, const T& target) {
+    IT mid;
+    while (begin < end) {
+        mid = begin + ((end - begin) >> 1);
+        if (*mid <= target) {
+            begin = mid + 1;
+        } else {
+            end = mid;
+        }
+    }
+    return begin;
+}
+
 template <typename T>
-__device__ 
-T atomicMin(T* address, T value) {
+__GENLX_CUDA_INL__
+T AtomicMin(T* address, T value) {
     return ::atomicMin(address, value);
 }
 
 template <>
-__device__ 
-float atomicMin<float>(float* address, float value) {
+__GENLX_CUDA_INL__
+float AtomicMin<float>(float* address, float value) {
   int* addr_as_int = reinterpret_cast<int*>(address);
   int old = *addr_as_int;
   int expected;
@@ -49,5 +65,5 @@ float atomicMin<float>(float* address, float value) {
   } while (expected != old);
   return __int_as_float(old);
 }
-    
+
 } // namespace graph_genlx

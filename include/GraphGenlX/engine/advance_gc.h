@@ -1,43 +1,31 @@
 #pragma once 
 
-#include <functional>
 #include <type_traits>
 
 #include <cub/block/block_load.cuh>
 #include <cub/block/block_scan.cuh>
 // #include <nvtx3/nvtx3.hpp>
 
+#include "GraphGenlX/engine/base.h"
+#include "GraphGenlX/frontier/base.h"
 #include "GraphGenlX/archi/macro/macro.h"
 #include "GraphGenlX/archi/check/check.h"
 #include "GraphGenlX/archi/thrust/thrust.h"
 #include "GraphGenlX/archi/kernel/kernel.h"
+#include "GraphGenlX/archi/only/cuda.cuh"
 #include "GraphGenlX/utils/limits.hpp"
 
 namespace graph_genlx {
 
 namespace engine {
 
-template <typename IT, typename T>
-__GENLX_DEV_INL__ 
-IT upper_bound(IT begin, IT end, const T& target) {
-    IT mid;
-    while (begin < end) {
-        mid = begin + ((end - begin) >> 1);
-        if (*mid <= target) {
-            begin = mid + 1;
-        } else {
-            end = mid;
-        }
-    }
-    return begin;
-}
-
 template <typename tparams,    // should be archi::LaunchTparams<arch_t::cuda>
-          typename factor_t,
+          typename functor_t,
           typename graph_t, 
           typename dstatus_t, 
           typename frontier_t> 
-__global__ static void advance_engine_kernel(
+__GENLX_CUDA_KERNEL__ 
+static void advance_engine_kernel(
     const graph_t graph, dstatus_t d_status, frontier_t frontier, typename frontier_t::index_type* output_size) {
     static_assert(graph_t::arch_value == arch_t::cuda);
 
@@ -56,7 +44,7 @@ __global__ static void advance_engine_kernel(
     __shared__ edge_t sedges[tparams::block_size];  // 起始边偏移
     edge_t th_deg;  // 结点度数(前缀和)
 
-    vertex_t input_size = frontier.input_size;
+    index_t input_size = frontier.input_size;
     if (g_tid < input_size) {  // 有效线程
         // 当前处理的前沿结点
         vertex_t v = frontier.get(g_tid); // 输入前沿结点ID
@@ -106,7 +94,7 @@ __global__ static void advance_engine_kernel(
     // (threadIdx.x + blockDim.x * blockIdx.x) - threadIdx.x + blockDim.x
     // blockIdx<128> 0   1   2   3
     // length      128 216 384 512  
-    auto length = g_tid - tid + tparams::block_size;
+    index_t length = g_tid - tid + tparams::block_size;
 
     // 确保均为有效范围
     if (input_size < length) {
@@ -127,7 +115,7 @@ __global__ static void advance_engine_kernel(
     ) {
         // Binary search to find which vertex id to work on.
         // 确定当前线程负责的源结点索引
-        int id = upper_bound(degrees + 0, degrees + length, i) - 1 - degrees;
+        int id = archi::cuda::UpperBound(degrees + 0, degrees + length, i) - 1 - degrees;
 
         // If the id is greater than the width of the block or the input size, we
         // exit.
@@ -149,7 +137,7 @@ __global__ static void advance_engine_kernel(
 
         // Use-defined advance condition.
         // advance操作 判断边是否满足条件
-        bool cond = factor_t::advance(src, dst, e, w, d_status);
+        bool cond = functor_t::advance(src, dst, e, w, d_status);
 
         archi::cuda::print("g_tid=%u src=%u, dst=%u, e=%u, w=%d d_status.dists[dst]=%f  cond=%d\n",
             g_tid, src, dst, e, w, d_status.dists[dst], cond);
@@ -162,16 +150,95 @@ __global__ static void advance_engine_kernel(
     }
 }
 
-class AdvanceGC {
+template <typename functor_t, typename comp_t, typename frontier_t>
+class AdvanceGC : public BaseEngine<comp_t, frontier_t> {
+public:
+    using base_t = BaseEngine<comp_t, frontier_t>;
+    using graph_t = typename base_t::graph_type;
+    using hstatus_t = typename base_t::hstatus_type;
+    using dstatus_t = typename base_t::dstatus_type;
+    using vertex_t = typename graph_t::vertex_type;
+    using edge_t = typename graph_t::edge_type;
+
+    constexpr static arch_t arch = graph_t::arch_value;
+
+    static_assert(frontier_t::kind == SPARSE_BASED);
+
+    using base_t::BaseEngine;
+
+    void Forward() override {
+        // nvtx3::scoped_range r{"Forward"};
+        ResizeOuput();
+        advance_engine(this->graph_, this->d_status_, this->frontier_); 
+        filter_engine(this->graph_, this->d_status_, this->frontier_);
+    }
+
+    void ResizeOuput() {
+        if constexpr (!frontier_t::has_output) {
+            return;
+        }
+
+        auto graph_ref = this->graph_.ToArch();
+        auto& frontier = this->frontier_;
+        auto frontier_ref = frontier.ToArch();
+        auto v_degree_func = [=] __GENLX_ARCH__ (const vertex_t &i) {
+            auto vid = frontier_ref.get(i);
+            // archi::cuda::print("vid=%u, degree=%u\n", vid, graph_ref.get_degree(vid));
+            return (utils::is_vertex_valid<graph_t::vstart_value>(vid)
+                        ? graph_ref.get_degree(vid) : 0);
+        };
+
+        auto sz = archi::transform_reduce<arch>(
+            thrust::make_counting_iterator<vertex_t>(0),
+            thrust::make_counting_iterator<vertex_t>(frontier.input_size()),
+            v_degree_func,
+            edge_t(0),
+            thrust::plus<edge_t>()
+        );
+        frontier.reset_output(sz);
+    }
+
+    static void 
+    filter_engine(const graph_t &graph, dstatus_t &d_status, frontier_t &frontier) {
+        // nvtx3::scoped_range r{"filter_engine"};
+
+        if constexpr (!frontier_t::has_output || !HasFilter::value) {
+            return;
+        }
+
+        constexpr auto vstart = graph_t::vstart_value;
+        using index_t = typename frontier_t::index_type;
+        using vertex_t = typename frontier_t::vertex_type;
+
+        LOG_DEBUG("filter begin");
+        frontier.swap_inout();
+
+        frontier.reset_output(frontier.input_size());
+        auto frontier_ref = frontier.ToArch();
+        auto bypass = [=] __GENLX_DEV__(const index_t &idx) {
+            vertex_t v = frontier_ref.get(idx);
+            if (!utils::is_vertex_valid<vstart>(v) ||
+                !functor_t::filter(v, d_status)) {
+                return utils::invalid_vertex<vstart, vertex_t>();
+            }
+            return v;
+        };
+
+        archi::transform<arch>(
+            thrust::make_counting_iterator<index_t>(0),
+            thrust::make_counting_iterator<index_t>(frontier.input_size()),
+            frontier.output().data(), bypass);
+
+        LOG_DEBUG("filter end");
+    }
+
 protected:
-    template <typename factor_t, typename graph_t, typename dstatus_t, typename frontier_t>
-    static void
-    advance_engine(const graph_t& graph, dstatus_t& d_status, frontier_t& frontier) {
+    static void 
+    advance_engine(const graph_t &graph, dstatus_t &d_status, frontier_t &frontier) {
         // nvtx3::scoped_range r{"advance_engine"};
 
-        constexpr arch_t arch = graph_t::arch_value;
         using tparams = archi::LaunchTparams<arch>;
-        constexpr auto kernel = advance_engine_kernel<tparams, factor_t,
+        constexpr auto kernel = advance_engine_kernel<tparams, functor_t,
                                                       typename graph_t::arch_ref_t,
                                                       dstatus_t, 
                                                       typename frontier_t::arch_ref_t>;
@@ -191,7 +258,6 @@ protected:
         LOG_DEBUG("output: ", frontier.output());
     }
 
-    template <typename factor_t>
     struct HasFilter {
         template <typename T>
         static std::true_type test(decltype(&T::filter));
@@ -199,64 +265,17 @@ protected:
         static std::false_type test(...);
 
         constexpr static bool value = 
-            std::is_same<std::true_type, decltype(test<factor_t>(0))>::value;
+            std::is_same<std::true_type, decltype(test<functor_t>(0))>::value;
     };
-
-public:
-
-    template <typename factor_t, typename graph_t, typename dstatus_t, typename frontier_t>
-    static void filter_engine(const graph_t& graph, dstatus_t& d_status, frontier_t& frontier) {
-        // nvtx3::scoped_range r{"filter_engine"};
-
-        if constexpr (!frontier_t::has_output || !HasFilter<factor_t>::value) {
-            return;
-        }
-
-        constexpr arch_t arch = graph_t::arch_value;
-        constexpr auto vstart = graph_t::vstart_value;
-        using index_t = typename frontier_t::index_type;
-        using vertex_t = typename frontier_t::vertex_type;
-
-        LOG_DEBUG("filter begin");
-        frontier.swap_inout();
-
-        frontier.reset_output(frontier.input_size());
-        auto frontier_ref = frontier.ToArch();
-        auto bypass = [=] __GENLX_DEV__ (const index_t &idx) {
-            vertex_t v = frontier_ref.get(idx);
-            if (!utils::is_vertex_valid<vstart>(v) ||
-                !factor_t::filter(v, d_status)) {
-                return utils::invalid_vertex<vstart, vertex_t>();
-            }
-            return v;
-        };
-
-        archi::transform<arch>(
-            thrust::make_counting_iterator<index_t>(0),
-            thrust::make_counting_iterator<index_t>(frontier.input_size()),
-            frontier.output().data(), 
-            bypass
-        );
-
-        LOG_DEBUG("filter end");
-    }
-
-    template <typename factor_t, typename comp_t>
-    static void Forward(comp_t& comp) {
-        // nvtx3::scoped_range r{"Forward"};
-
-        advance_engine<factor_t>(comp.graph, comp.d_status, comp.frontier); 
-        filter_engine<factor_t>(comp.graph, comp.d_status, comp.frontier);
-    }
-
 };
 
 } // namespce engine
 
 template <typename vertex_t, typename edge_t,
           typename weight_t, typename dstatus_t, typename vprop_t = empty_t>
-struct AdvanceFactor {
-    using engine_type = engine::AdvanceGC;
+struct AdvanceFunctor {
+    template <typename functor_t, typename comp_t, typename frontier_t>
+    using engine_type = engine::AdvanceGC<functor_t, comp_t, frontier_t>;
 
     __GENLX_DEV_INL__
     static bool advance(const vertex_t &src, const vertex_t &dst, const edge_t &edge,

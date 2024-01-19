@@ -1,5 +1,6 @@
 #pragma once 
 
+#include <vector>
 #include <functional>
 
 #include "GraphGenlX/archi/macro/macro.h"
@@ -8,44 +9,32 @@ namespace graph_genlx {
 
 template <typename graph_t,
         typename hstatus_t,
-        typename dstatus_t,
-        typename frontier_t>
+        typename dstatus_t>
 struct ComponentX {
-    
-    void Init() {}
+    using graph_type = graph_t;
+    using hstatus_type = hstatus_t;
+    using dstatus_type = dstatus_t;
+    // using frontier_type = frontier_t;
+    using vertex_type = typename graph_t::vertex_type;    
 
-    bool IsConvergent() {
-        return frontier.empty();
+    ComponentX(const graph_t& graph_, hstatus_t& h_status_, dstatus_t& d_status_)
+        : graph(graph_), h_status(h_status_), d_status(d_status_) {}
+
+    virtual void Init() {}
+
+    /// @brief converge according to the algorithm
+    /// @return default return false when not according to the algorithm
+    virtual bool IsConvergent() {
+        return false;
     }
 
-    void BeforeEngine() {
-        frontier.BeforeEngine(graph);
-    }
+    virtual void BeforeEngine() {}
 
-    void AfterEngine() {
-        frontier.AfterEngine();
-    }
+    virtual void AfterEngine() {}
 
     const graph_t& graph;
     hstatus_t& h_status;
-    // use reference will occur an
     dstatus_t& d_status;
-    frontier_t& frontier;
 };
-
-namespace compx {
-
-template <template <typename, typename, typename, typename> class comp_t,
-          typename graph_t, 
-          typename hstatus_t, 
-          typename dstatus_t,
-          typename frontier_t>
-comp_t<graph_t, hstatus_t, dstatus_t, frontier_t>
-build(const graph_t &graph, hstatus_t &h_status, dstatus_t& d_status, frontier_t &frontier) {
-    return comp_t<graph_t, hstatus_t, dstatus_t, frontier_t>{
-        graph, h_status, d_status, frontier};
-}
-
-} // namespace comp
 
 } // namespace graph_genlx
