@@ -17,6 +17,10 @@ struct CsrMat {
     constexpr static arch_t arch_value = arch;
     constexpr static vstart_t vstart_value = v_start;
 
+    using value_type = value_t;
+    using index_type = index_t;
+    using offset_type = offset_t;
+
     CsrMat() = default;
 
     CsrMat(index_t n_rows, index_t n_cols, offset_t nnz,

@@ -3,6 +3,7 @@
 #include "GraphGenlX/type.hpp"
 #include "GraphGenlX/archi.h"
 #include "GraphGenlX/graph/graph_view.hpp"
+#include "GraphGenlX/graph/arch_ref.h"
 #include "GraphGenlX/mat/csr.h"
 #include "GraphGenlX/mat/csc.h"
 #include "GraphGenlX/mat/convert.h"
@@ -23,138 +24,44 @@ public:
     constexpr static arch_t arch_value = arch;
     constexpr static vstart_t vstart_value = v_start;
 
+    constexpr static graph_view_t mat_view = get_first_view<views>();
+    constexpr static bool both_mat = has_all_views(views, graph_view_t::normal, graph_view_t::transpose);
+
+    using graph_mat_t = typename graph_mat<mat_view, arch, weight_t, vertex_t,
+                                           edge_t, v_start>::type;
+    using graph_tmat_t = std::conditional_t<both_mat, graph_mat_t, empty_t>;
+    using arch_ref_t = GraphArchRef<mat_view, arch, v_start, vprop_t, vertex_t, edge_t, weight_t>;
+
 protected:
+    static_assert(has_some_views(views, graph_view_t::normal, graph_view_t::transpose));
+
     constexpr static bool has_csr_ = has_view(views, graph_view_t::csr);
-    constexpr static bool has_csc_ = has_view(views, graph_view_t::csc);
-
-    using csr_t = CsrMat<arch, weight_t, vertex_t, edge_t, v_start>;
-    using csc_t = CscMat<arch, weight_t, vertex_t, edge_t, v_start>;
-
-    using csr_or_ept_t = std::conditional_t<has_csr_, csr_t, empty_t>;
-    using csc_or_ept_t = std::conditional_t<has_csc_, csc_t, empty_t>;
 
 public:
-    struct arch_ref_t {
-        using vprop_type = vprop_t;
-        using vertex_type = vertex_t;
-        using edge_type = edge_t;
-        using weight_type = weight_t;
 
-        constexpr static arch_t arch_value = arch;
-        constexpr static vstart_t vstart_value = v_start;
-        
-        __GENLX_DEV_INL__ 
-        typename std::conditional_t<has_csr_ || has_csc_, edge_t, void>
-        get_degree(vertex_t vid) const {
-            if constexpr (has_csr_) {
-                return row_offsets[vid + 1] - row_offsets[vid];
-            } else if constexpr (has_csc_) {
-                return col_offsets[vid + 1] - col_offsets[vid];
-            } else {
-                return;
-            }
-        }
+    Graph(graph_mat_t&& mat, vprop_t&& vprops)
+    : mat_(std::move(mat)), transpose_mat_(), vprops_(std::move(vprops)) {}
 
-        __GENLX_DEV_INL__ 
-        typename std::conditional_t<has_csr_ || has_csc_, edge_t, void>
-        get_starting_edge(vertex_t vid) const {
-            if constexpr (has_csr_) {
-                return row_offsets[vid];
-            } else if constexpr (has_csc_) {
-                return col_offsets[vid];
-            } else {
-                return;
-            }
-        }
-
-        __GENLX_DEV_INL__
-        typename std::conditional_t<has_csr_ || has_csc_, vertex_t, void>
-        get_dst_vertex(edge_t eid) const {
-            if constexpr (has_csr_) {
-                return col_indices[eid];
-            } else if constexpr (has_csc_) {
-                return row_indices[eid];
-            } else {
-                return;
-            }
-        }
-
-        __GENLX_DEV_INL__
-        typename std::conditional_t<has_csr_ || has_csc_, weight_t, void>
-        get_edge_weight(edge_t eid) const {
-            if constexpr (has_csr_) {
-                return csr_values[eid];
-            } else if constexpr (has_csc_) {
-                return csc_values[eid];
-            } else {
-                return;
-            }
-        }
-
-        vertex_t num_vertices;
-        edge_t num_edges;
-
-        const edge_t* row_offsets;
-        const vertex_t* col_indices;
-        const weight_t* csr_values;
-
-        const edge_t* col_offsets;
-        const vertex_t* row_indices;
-        const weight_t* csc_values;
-
-        vprop_t vprops{};
-    };
-
-public:
-    Graph(const csr_t& csr, const vprop_t& vprops)
-    : csr_(csr), csc_(), vprops_(vprops) {
-        static_assert(has_csr_);
-        if constexpr (has_csc_) {
-            csc_ = mat::ToCsc(csr);
-        }
-    }
-
-    Graph(csr_t&& csr, vprop_t&& vprops)
-    : csr_(), csc_(), vprops_(std::move(vprops)) {
-        static_assert(has_csr_);
-        if constexpr (has_csc_) {
-            csc_ = mat::ToCsc(csr);
-        }
-        csr_ = std::move(csr);
-    }
+    Graph(graph_mat_t&& mat, graph_tmat_t&& transpose_mat, vprop_t&& vprops)
+    : mat_(std::move(mat)), transpose_mat_(std::move(transpose_mat)),
+      vprops_(std::move(vprops)) {}
 
     const vprop_t& vprops() const {
         return vprops_;
     }
 
-    typename std::conditional_t<has_csr_ || has_csc_, vertex_t, void>
-    num_vertices() const {
-        if constexpr (has_csr_) {
-            return csr_.n_rows;
-        } else if constexpr (has_csc_) {
-            return csc_.n_rows;
-        } else {
-            return;
-        }
+    vertex_t num_vertices() const {
+        return mat_.n_rows;
     }
 
-    typename std::conditional_t<has_csr_ || has_csc_, edge_t, void>
-    num_edges() const {
-        if constexpr (has_csr_) {
-            return csr_.nnz;
-        } else if constexpr (has_csc_) {
-            return csc_.nnz;
-        } else {
-            return;
-        }
+    edge_t num_edges() const {
+        return mat_.nnz;
     }
 
-    typename std::conditional_t<has_csr_ || has_csc_, edge_t, void>
+    typename std::conditional_t<has_csr_, edge_t, void>
     get_degree(vertex_t vid) const {
         if constexpr (has_csr_) {
-            return csr_.row_offsets[vid + 1] - csr_.row_offsets[vid];
-        } else if constexpr (has_csc_) {
-            return csc_.col_offsets[vid + 1] - csc_.col_offsets[vid];
+            return mat_.row_offsets[vid + 1] - mat_.row_offsets[vid];
         } else {
             return;
         }
@@ -163,18 +70,11 @@ public:
     arch_ref_t ToArch() const {
         arch_ref_t arch_ref;
         if constexpr (has_csr_) {
-            arch_ref.num_vertices = csr_.n_rows;
-            arch_ref.num_edges = csr_.nnz;
-            arch_ref.row_offsets = csr_.row_offsets.data();
-            arch_ref.col_indices = csr_.col_indices.data();
-            arch_ref.csr_values = csr_.values.data();
-        }
-        if constexpr (has_csc_) {
-            arch_ref.num_vertices = csc_.n_rows;
-            arch_ref.num_edges = csc_.nnz;
-            arch_ref.col_offsets = csc_.col_offsets.data();
-            arch_ref.row_indices = csc_.row_indices.data();
-            arch_ref.csc_values = csc_.values.data();           
+            arch_ref.num_vertices = mat_.n_rows;
+            arch_ref.num_edges = mat_.nnz;
+            arch_ref.row_offsets = mat_.row_offsets.data();
+            arch_ref.col_indices = mat_.col_indices.data();
+            arch_ref.values = mat_.values.data();
         }
         if constexpr (!std::is_same_v<vprop_t, empty_t>) {
             arch_ref.vprops = vprops_.ToArch();
@@ -187,18 +87,16 @@ public:
         std::string str;
         str += "Graph{ ";
         str += "arch_value:" + utils::ToString(arch_value) + ", ";
-        if constexpr (has_csr_) {
-            str += "csr_:" + csr_.ToString() + ", ";
-        }
-        if constexpr (has_csc_) {
-            str += "csc_:" + csc_.ToString() + ", ";
+        str += "mat_:" + mat_.ToString() + ", ";
+        if constexpr (both_mat) {
+            str += "transpose_mat_:" + transpose_mat_.ToString() + ", ";
         }
         if constexpr (!std::is_same_v<vprop_t, empty_t>) {
             str += "vprops_:";
             if constexpr (utils::HasToStrMethod<vprop_t>::value) {
-                str += vprops_.ToString() + ", ";
+                str += vprops_.ToString();
             } else {
-                str += "..., ";
+                str += "...";
             }
         }
         str += " }";
@@ -206,8 +104,8 @@ public:
     }
 
 protected:
-    csr_or_ept_t csr_;
-    csc_or_ept_t csc_;
+    graph_mat_t  mat_;
+    graph_tmat_t transpose_mat_;
 
     vprop_t vprops_;
 };

@@ -271,6 +271,8 @@ protected:
 
 } // namespce engine
 
+constexpr graph_view_t AdvanceViews = graph_view_t::csr | graph_view_t::normal;
+
 template <typename vertex_t, typename edge_t,
           typename weight_t, typename dstatus_t, typename vprop_t = empty_t>
 struct AdvanceFunctor {

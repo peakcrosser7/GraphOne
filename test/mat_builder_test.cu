@@ -8,7 +8,8 @@ using namespace graph_genlx;
 
 int main() {
     auto csr = Loader<>()
-                   .LoadCsrFromTxt<arch_t::cuda, int>("../data/sample/sample.adj");
+                   .LoadEdgesFromTxt<int>("../datasets/sample/sample.adj")
+                   .ToCsr<arch_t::cuda>();
     cout << csr.ToString() << endl;
 
     auto csc = mat::ToCsc(csr);

@@ -93,8 +93,8 @@ int main(int argc, char *argv[]) {
     LoadEdgeOpts opts;
     opts.comment_prefix = "%";
     // opts.is_directed = true;
-    auto csr = loader.LoadCsrFromTxt<arch, dist_t>(argv[1], opts);
-    auto g = graph::FromCsr<>(std::move(csr));
+    auto cache = loader.LoadEdgesFromTxt<dist_t>(argv[1], opts);
+    auto g = graph::build<arch_t::cuda, BlasViews>(cache);
     using graph_t = decltype(g);
 
     if (!loader.ReorderedVid(src)) {
@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
     DenseVec<arch, vid_t> visited(g.num_vertices());
 
     sssp_hstatus_t h_status{src, dists/*, visited*/};
-    sssp_dstatus_t d_status{/*0,*/ dists.data()/*, visited.data()*/};
+    sssp_dstatus_t d_status{0, dists.data()/*, visited.data()*/};
     DblBufFrontier<arch, vid_t> frontier(g.num_vertices(), src);
 
     SSSPComp<graph_t> comp(g, h_status, d_status);

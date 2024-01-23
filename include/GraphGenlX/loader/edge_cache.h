@@ -26,6 +26,7 @@ struct EdgeUnit {
 template <vstart_t v_start,
           typename edata_t, 
           typename index_t,
+          typename offset_t,
           template<typename> class alloc_t = std::allocator>
 class EdgeCache : public std::vector<EdgeUnit<edata_t, index_t>, alloc_t<EdgeUnit<edata_t, index_t>>> {
 public:
@@ -38,7 +39,7 @@ public:
         return max_vid_;
     }
 
-    index_t num_edges() const {
+    offset_t num_edges() const {
         return vec_spec_t::size();
     }
 
@@ -46,14 +47,14 @@ public:
         return max_vid_ + 1;
     }
 
-    template <arch_t arch, // cannot deduce
-              typename offset_t = eid_t>
+    template <arch_t arch, bool is_transpose = false>
     CsrMat<arch, edata_t, index_t, offset_t, v_start> ToCsr() const {
-        auto edge_cache = *this;
 
-        index_t n_rows = edge_cache.num_vertices();
-        index_t n_cols = edge_cache.num_vertices();
-        offset_t nnz = edge_cache.num_edges();
+        auto cache_it = get_transpose_itertator<is_transpose>();
+
+        index_t n_rows = num_vertices();
+        index_t n_cols = num_vertices();
+        offset_t nnz = num_edges();
 
         Buffer<arch_t::cpu, offset_t, index_t> row_offsets(n_rows + 1);
         Buffer<arch_t::cpu, index_t, offset_t> col_indices(nnz);
@@ -61,7 +62,7 @@ public:
 
         // compute number of non-zero entries per row
         for (offset_t i = 0; i < nnz; ++i) {
-            ++row_offsets[edge_cache[i].src];
+            ++row_offsets[cache_it[i].src];
         }
         
         // cumulative sum the nnz per row to get row_offsets[]
@@ -73,7 +74,7 @@ public:
         row_offsets[n_rows] = nnz;
 
         for (offset_t i = 0; i < nnz; ++i) {
-            auto edge = edge_cache[i];
+            auto edge = cache_it[i];
             index_t row = edge.src;
             index_t row_off = row_offsets[row];
             col_indices[row_off] = edge.dst;
@@ -104,6 +105,32 @@ public:
     }
 
 protected:
+    struct UnitRef {
+        const index_t& src;
+        const index_t& dst;
+        const edata_t& edata;
+    };
+
+    template <bool is_transpose>
+    struct TransposeIterator {
+        const EdgeCache<v_start, edata_t, index_t, offset_t, alloc_t>& cache;
+
+        UnitRef operator[](offset_t i) const {
+            auto& edge = cache[i];
+            if constexpr (is_transpose) {
+                return UnitRef{edge.dst, edge.src, edge.edata};
+            } else {
+                return UnitRef{edge.src, edge.dst, edge.edata};
+            }
+        }
+    };
+
+    template <bool is_transpose>
+    TransposeIterator<is_transpose> get_transpose_itertator() const {
+        return {*this};
+    }
+
+
     using vec_spec_t = std::vector<EdgeUnit<edata_t, index_t>, alloc_t<EdgeUnit<edata_t, index_t>>>;
 
     index_t max_vid_{0};

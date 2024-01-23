@@ -13,11 +13,14 @@ int main () {
     // install_oneshot_signal_handlers();
     
     Loader<> loader;
-    auto csr = loader.LoadCsrFromTxt<arch_t::cuda, int>("../data/sample/sample.adj");
-    
+    EdgeCache<vstart_t::FROM_0_TO_0, int, vid_t, eid_t> cache = 
+        loader.LoadEdgesFromTxt<int>("../datasets/sample/sample.adj");
+    CsrMat<arch_t::cuda, int, vid_t, eid_t, vstart_t::FROM_0_TO_0> csr = 
+        cache.ToCsr<arch_t::cuda, true>();
+
     DenseMat<arch_t::cpu, double> feats(csr.n_rows, 4);
     DenseVec<arch_t::cpu, int32_t> labels(csr.n_rows);
-    loader.LoadVertexStatusFromTxt<int32_t>("../data/sample/sample_more.feat",[&](vid_t vid, std::vector<int32_t>& vdata) {
+    loader.LoadVertexStatusFromTxt<int32_t>("../datasets/sample/sample_more.feat",[&](vid_t vid, std::vector<int32_t>& vdata) {
         if (vdata.size() < 5) {
             return false;
         }
@@ -30,18 +33,18 @@ int main () {
     cout << feats.ToString() << endl;
     cout << labels.ToString() << endl;
 
-    auto feat = loader.LoadVertexVecFromTxt<arch_t::cuda, int>("../data/sample/sample_single.feat", csr.n_rows);
+    auto feat = loader.LoadVertexVecFromTxt<arch_t::cuda, int>("../datasets/sample/sample_single.feat", csr.n_rows);
     cout << feat.ToString() << endl;
 
     DenseVec<arch_t::cpu, float> feat2(csr.n_rows);
-    loader.LoadVertexStatusFromTxt<float>("../data/sample/sample_single.feat", [&](vid_t vid, std::vector<float>& vdata) {
+    loader.LoadVertexStatusFromTxt<float>("../datasets/sample/sample_single.feat", [&](vid_t vid, std::vector<float>& vdata) {
         feat2[vid] = vdata.front();
         return true;
     });
     cout << feat2.ToString() << endl;
 
     gnn::vprop_t<arch_t::cpu> vprops1(csr.n_rows, 4);
-    loader.LoadVertexStatusFromTxt<int32_t>("../data/sample/sample_more.feat", [&](vid_t vid, std::vector<int32_t>& vdata) {
+    loader.LoadVertexStatusFromTxt<int32_t>("../datasets/sample/sample_more.feat", [&](vid_t vid, std::vector<int32_t>& vdata) {
         if (vdata.size() < 5) {
             return false;
         }
@@ -60,7 +63,7 @@ int main () {
 
     vector<vector<double>> feat_vec(csr.n_rows);
     DenseVec<arch_t::cpu, int32_t> label_vec(csr.n_rows);
-    loader.LoadVertexStatusFromTxt<double>("../data/sample/sample_more.feat", [&](vid_t vid, std::vector<double>& vdata) {
+    loader.LoadVertexStatusFromTxt<double>("../datasets/sample/sample_more.feat", [&](vid_t vid, std::vector<double>& vdata) {
         label_vec[vid] = vdata.back();
         vdata.pop_back();
         feat_vec[vid] = std::move(vdata);
@@ -71,7 +74,21 @@ int main () {
     vprops3.labels = label_vec;
     cout << "vprop3:" << vprops3.ToString() << endl;
 
-    auto g = graph::FromCsr<graph_view_t::csc>(std::move(csr), std::move(vprops2));
+
+    // using csr_t = decltype(csr);
+    // using graph_t = Graph<
+    //         arch_t::cuda, graph_view_t::normal|graph_view_t::csr, 
+    //         csr_t::vstart_value, 
+    //         gnn::vprop_t<arch_t::cuda>,
+    //         csr_t::index_type,
+    //         csr_t::offset_type,
+    //         csr_t::value_type
+    //     >;
+    // auto g = graph_t(std::move(csr), std::move(vprops2));
+    auto g = graph::build<
+            arch_t::cuda,
+            graph_view_t::normal|graph_view_t::csr
+        >(cache);
     cout << g.ToString() << endl;
 
     cout << csr.ToString() << endl;

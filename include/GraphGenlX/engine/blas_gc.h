@@ -38,7 +38,7 @@ public:
         auto graph_ref = this->graph_.ToArch();
         spmv_ = std::move(blas::MakeSpMV<arch, blas::SpmvCudaMergeBased, SpmvFunctor>(
             graph_ref.num_vertices, graph_ref.num_vertices, graph_ref.num_edges,
-            graph_ref.row_offsets, graph_ref.col_indices, graph_ref.csr_values,
+            graph_ref.row_offsets, graph_ref.col_indices, graph_ref.values,
             info_vec_.data(), res_vec_.data()
         ));
     }
@@ -123,6 +123,8 @@ protected:
 };
     
 } // namespace engine
+
+constexpr graph_view_t BlasViews = graph_view_t::csr | graph_view_t::transpose;
 
 template <typename vertex_t, typename weight_t, typename dstatus_t,
           typename info_t, typename gather_t>

@@ -85,8 +85,8 @@ int main(int argc, char *argv[]) {
     LoadEdgeOpts opts;
     opts.comment_prefix = "%";
     // opts.is_directed = true;
-    auto csr = loader.LoadCsrFromTxt<arch, dist_t>(argv[1], opts);
-    auto g = graph::FromCsr<>(std::move(csr));
+    auto cache = loader.LoadEdgesFromTxt<dist_t>(argv[1], opts);
+    auto g = graph::build<arch_t::cuda, AdvanceViews>(cache);
     using graph_t = decltype(g);
 
     if (!loader.ReorderedVid(src)) {

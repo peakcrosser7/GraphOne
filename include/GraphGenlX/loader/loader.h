@@ -44,7 +44,8 @@ struct LoadVertexOpts {
 
 template <vstart_t v_start = vstart_t::FROM_0_TO_0,
           bool reorder_vid = true, 
-          typename index_t = vid_t>
+          typename index_t = vid_t,
+          typename offset_t = eid_t>
 class Loader {
   public:
     Loader() {
@@ -54,7 +55,8 @@ class Loader {
     }
 
     template <typename edata_t> // cannot deduce
-    EdgeCache<v_start, edata_t, index_t> LoadEdgesFromTxt(const std::string& filepath,
+    EdgeCache<v_start, edata_t, index_t, offset_t> 
+    LoadEdgesFromTxt(const std::string& filepath,
         const LoadEdgeOpts& opts = LoadEdgeOpts()) {
         if (!utils::StrEndWith(filepath, opts.file_ext)) {
             LOG_ERROR("file extension does not match, it should \"", 
@@ -66,7 +68,7 @@ class Loader {
             LOG_ERROR("cannot open graph adj file: ", filepath);
         }
 
-        EdgeCache<v_start, edata_t, index_t> edge_cache;
+        EdgeCache<v_start, edata_t, index_t, offset_t> edge_cache;
         size_t init_cap = (1 << 12) / sizeof(EdgeUnit<edata_t, index_t>);
         edge_cache.reserve(init_cap);
 
@@ -140,7 +142,7 @@ class Loader {
         return edge_cache;      
     }
 
-    template <arch_t arch, typename edata_t = double, typename offset_t = eid_t> // cannot deduce
+    template <arch_t arch, typename edata_t = double> // cannot deduce
     CsrMat<arch, edata_t, index_t, offset_t, v_start> 
     LoadCsrFromTxt(const std::string& filepath, const LoadEdgeOpts& opts = LoadEdgeOpts()) {
         return LoadEdgesFromTxt<edata_t>(filepath, opts)
@@ -297,7 +299,7 @@ protected:
     }
 
     template <typename edata_t>
-    void AfterAllEdges_(EdgeCache<v_start, edata_t, index_t>& edge_cache, const LoadEdgeOpts& opts) {
+    void AfterAllEdges_(EdgeCache<v_start, edata_t, index_t, offset_t>& edge_cache, const LoadEdgeOpts& opts) {
         if (opts.keep_duplicate_edges == false) {
             std::sort(edge_cache.begin(), edge_cache.end());
             edge_cache.erase(std::unique(edge_cache.begin(), edge_cache.end()), edge_cache.end());
