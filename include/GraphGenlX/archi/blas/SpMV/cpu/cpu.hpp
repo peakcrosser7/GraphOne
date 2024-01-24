@@ -19,8 +19,6 @@ struct SpmvDispatcher<SpmvCpuNaive, functor_t,
     using spmv_params_t =
         SpmvParams<index_t, offset_t, mat_value_t, vec_x_value_t, vec_y_value_t>;
 
-    SpmvDispatcher() = default;
-
     SpmvDispatcher(spmv_params_t &spmv_params)
     : params(spmv_params) {}
 

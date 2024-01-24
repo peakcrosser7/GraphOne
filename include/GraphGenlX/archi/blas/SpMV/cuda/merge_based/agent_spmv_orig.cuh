@@ -316,7 +316,7 @@ struct AgentSpmv
 
         // Gather the row end-offsets for the merge tile into shared memory
         // 将线程块分片每行的终止偏移写入共享内存
-        for (offset_t item = threadIdx.x; item <= tile_num_rows; item += BLOCK_THREADS) {
+        for (int item = threadIdx.x; item < tile_num_rows + ITEMS_PER_THREAD; item += BLOCK_THREADS) {
             const offset_t offset =
               (cub::min)(static_cast<offset_t>(tile_start_coord.x + item),
                          static_cast<offset_t>(spmv_params.num_rows - 1));
@@ -414,7 +414,7 @@ struct AgentSpmv
         if (tile_num_rows > 0) {
             // 线程0的线程分片行偏移置为-1
             if (threadIdx.x == 0) {
-                scan_item.key = -1;
+                scan_item.key = static_cast<index_t>(-1);
             }
 
             // Direct scatter
@@ -460,8 +460,8 @@ struct AgentSpmv
      */
     __device__ __forceinline__ KeyValuePairT ConsumeTile(
         offset_t             tile_idx,
-        CoordinateT     tile_start_coord,
-        CoordinateT     tile_end_coord,
+        CoordinateT          tile_start_coord,
+        CoordinateT          tile_end_coord,
         cub::Int2Type<false> is_direct_load)     ///< Marker type indicating whether to load nonzeros directly during path-discovery or beforehand in batch
     {
         // 线程块分片包含的行数
@@ -469,6 +469,7 @@ struct AgentSpmv
         // 线程块分片包含的非零元数
         offset_t         tile_num_nonzeros       = tile_end_coord.y - tile_start_coord.y;
 
+        // printf("tile_num_rows=%u, tile_num_nonzeros=%u \n", tile_num_rows, tile_num_nonzeros);
 #if (CUB_PTX_ARCH >= 520)
 
         // 记录线程块分片每行的终止行偏移的共享内存指针
@@ -537,8 +538,11 @@ struct AgentSpmv
         // Gather the row end-offsets for the merge tile into shared memory
         // 将线程块分片每行的终止偏移写入共享内存
         #pragma unroll 1    // 使用1表示循环展开1次,即不展开
-        for (int item = threadIdx.x; item <= tile_num_rows; item += BLOCK_THREADS) {
-            s_tile_row_end_offsets[item] = wd_row_end_offsets[tile_start_coord.x + item];
+        for (int item = threadIdx.x; item < tile_num_rows + ITEMS_PER_THREAD; item += BLOCK_THREADS) {
+            const offset_t offset =
+              (cub::min)(static_cast<offset_t>(tile_start_coord.x + item),
+                         static_cast<offset_t>(spmv_params.num_rows - 1));
+            s_tile_row_end_offsets[item] = wd_row_end_offsets[offset];
         }
 
         __syncthreads();
@@ -664,6 +668,7 @@ struct AgentSpmv
             #pragma unroll 1
             for (int item = threadIdx.x; item < tile_num_rows; item += BLOCK_THREADS) {
                 spmv_params.d_vector_y[tile_start_coord.x + item] = s_partials[item];
+                // printf("write y[%u]=%d\n", tile_start_coord.x + item, s_partials[item]);
             }
         }
 
@@ -689,33 +694,16 @@ struct AgentSpmv
         // Read our starting coordinates
         // 两个线程分别对应写入线程块分片合并路径的起始坐标和终止坐标
         if (threadIdx.x < 2) {
-            // d_tile_coordinates为NULL则需进行SpMV合并路径起始坐标的搜索
-            if (d_tile_coordinates == NULL) {
-                // Search our starting coordinates
-                offset_t                              diagonal = (tile_idx + threadIdx.x) * TILE_ITEMS;
-                CoordinateT                           tile_coord;
-                cub::CountingInputIterator<offset_t>  nonzero_indices(0);
-
-                // Search the merge path
-                // 搜索每个线程块分片的起始坐标
-                SearchMergePath(
-                    diagonal,
-                    RowOffsetsSearchIteratorT(spmv_params.d_row_end_offsets),
-                    nonzero_indices,
-                    spmv_params.num_rows,
-                    spmv_params.num_nonzeros,
-                    tile_coord);
-
-                temp_storage.tile_coords[threadIdx.x] = tile_coord;
-            } else {
-                temp_storage.tile_coords[threadIdx.x] = d_tile_coordinates[tile_idx + threadIdx.x];
-            }
+            // printf("tile_idx=%u tile_idx+threadIdx.x=%u \n", tile_idx, tile_idx + threadIdx.x);
+            temp_storage.tile_coords[threadIdx.x] = d_tile_coordinates[tile_idx + threadIdx.x];
         }
 
         __syncthreads();
 
         CoordinateT tile_start_coord     = temp_storage.tile_coords[0];
         CoordinateT tile_end_coord       = temp_storage.tile_coords[1];
+        // printf("tile_start_coord.x=%u, tile_start_coord.y=%u\n", tile_start_coord.x, tile_start_coord.y);
+        // printf("tile_end_coord.x=%u, tile_end_coord.y=%u\n", tile_end_coord.x, tile_end_coord.y);
 
         // Consume multi-segment tile
         // 消耗合并路径的线程块分,返回线程块分片最后一行的行偏移和累加结果

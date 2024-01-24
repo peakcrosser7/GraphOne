@@ -26,16 +26,12 @@ void SearchMergePath(
     typedef typename std::iterator_traits<AIteratorT>::value_type T;
 
     // 二分搜索最小索引,初始化为对角线的a方向最小索引
-    OffsetT split_min;
-    if constexpr (std::is_signed_v<OffsetT>) {
-        split_min = CUB_MAX(diagonal - b_len, 0);
-    } else {
-        split_min = diagonal - b_len;
-    }
-     
+    OffsetT split_min = CUB_MAX(static_cast<int>(diagonal - b_len), 0);    
     // 二分搜索最大索引,初始化为对角线的a方向最大索引
     OffsetT split_max = CUB_MIN(diagonal, a_len);
 
+    // printf("search params:tid=%u, diagonal=%u, a_len=%u, b_len=%u, split_min=%u, split_max=%u \n", 
+    //     blockIdx.x * blockDim.x + threadIdx.x, diagonal, a_len, b_len, split_min, split_max);
     // 二分搜索
     // i+j=k,寻找第一个满足A_i>B_j的坐标(i,j)
     // 在这里,split_pivot即i,diagonal即k

@@ -134,8 +134,7 @@ __global__ void DeviceSpmvSearchKernel(
 
     // Find the starting coordinate for all tiles (plus the end coordinate of the last one)
     OffsetT tile_idx = (blockIdx.x * blockDim.x) + threadIdx.x;
-    if (tile_idx < num_merge_tiles + 1)
-    {
+    if (tile_idx < num_merge_tiles + 1) {
         OffsetT                              diagonal = (tile_idx * TILE_ITEMS);
         CoordinateT                          tile_coordinate;
         cub::CountingInputIterator<OffsetT>  nonzero_indices(0);
@@ -151,6 +150,7 @@ __global__ void DeviceSpmvSearchKernel(
 
         // Output starting offset
         d_tile_coordinates[tile_idx] = tile_coordinate;
+        // printf("tile_idx: %u, tile_coordinate=[%u, %u] \n", tile_idx, tile_coordinate.x, tile_coordinate.y);
     }
 }
 
@@ -653,6 +653,7 @@ struct MergeBasedSpmv {
             if (CubDebug(error = cub::AliasTemporaries(d_temp_storage, temp_storage_bytes, allocations, allocation_sizes))) break;
 
             CoordinateT* d_tile_coordinates      = (CoordinateT*) allocations[2];    // Agent starting coordinates
+            // printf("SegmentSearch - d_tile_coordinates:%p \n", d_tile_coordinates);
 
             // Get search/init grid dims
             int search_block_size   = INIT_KERNEL_THREADS;
@@ -681,7 +682,7 @@ struct MergeBasedSpmv {
     }
 
     CUB_RUNTIME_FUNCTION __forceinline__
-    cudaError_t Dispatch(
+    cudaError_t SpmvMerge(
         void*                   d_temp_storage,                     ///< [in] %Device-accessible allocation of temporary storage.  When NULL, the required allocation size is written to \p temp_storage_bytes and no work is done.
         size_t                  temp_storage_bytes,                 ///< [in,out] Reference to size in bytes of \p d_temp_storage allocation
         SpmvParamsT&            spmv_params,                        ///< SpMV input parameter bundle
@@ -694,6 +695,10 @@ struct MergeBasedSpmv {
                 if (spmv_params.num_rows < 0 || spmv_params.num_cols < 0) {
                     return cudaErrorInvalidValue;
                 }
+            }
+
+            if (d_temp_storage == nullptr) {
+                return cudaErrorInvalidValue;
             }
 
             if (spmv_params.num_rows == 0 || spmv_params.num_cols == 0) { // Empty problem, no-op.
@@ -767,6 +772,8 @@ struct MergeBasedSpmv {
             KeyValuePairT*  d_tile_carry_pairs      = (KeyValuePairT*) allocations[1];  // Agent carry-out pairs
             CoordinateT*    d_tile_coordinates      = (CoordinateT*) allocations[2];    // Agent starting coordinates
 
+            // printf("SpmvMerge - d_tile_coordinates:%p \n", d_tile_coordinates);
+
             // Log spmv_kernel configuration
             if (debug_synchronous) _CubLog("Invoking spmv_kernel<<<{%d,%d,%d}, %d, 0, %lld>>>(), %d items per thread\n",
                 spmv_grid_size.x, spmv_grid_size.y, spmv_grid_size.z, spmv_config.block_threads, (long long) stream, spmv_config.items_per_thread);
@@ -826,229 +833,229 @@ struct MergeBasedSpmv {
     // Dispatch entrypoints
     //---------------------------------------------------------------------
 
-    /**
-     * Internal dispatch routine for computing a device-wide reduction using the
-     * specified kernel functions.
-     *
-     * If the input is larger than a single tile, this method uses two-passes of
-     * kernel invocations.
-     */
-    template <
-        typename                Spmv1ColKernelT,                    ///< Function type of cub::DeviceSpmv1ColKernel
-        typename                SpmvSearchKernelT,                  ///< Function type of cub::AgentSpmvSearchKernel
-        typename                SpmvKernelT,                        ///< Function type of cub::AgentSpmvKernel
-        typename                SegmentFixupKernelT>                 ///< Function type of cub::DeviceSegmentFixupKernelT
-    CUB_RUNTIME_FUNCTION __forceinline__
-    static cudaError_t Dispatch(
-        void*                   d_temp_storage,                     ///< [in] %Device-accessible allocation of temporary storage.  When NULL, the required allocation size is written to \p temp_storage_bytes and no work is done.
-        size_t&                 temp_storage_bytes,                 ///< [in,out] Reference to size in bytes of \p d_temp_storage allocation
-        SpmvParamsT&            spmv_params,                        ///< SpMV input parameter bundle
-        cudaStream_t            stream,                             ///< [in] CUDA stream to launch kernels within.  Default is stream<sub>0</sub>.
-        bool                    debug_synchronous,                  ///< [in] Whether or not to synchronize the stream after every kernel launch to check for errors.  Also causes launch configurations to be printed to the console.  Default is \p false.
-        Spmv1ColKernelT         spmv_1col_kernel,                   ///< [in] Kernel function pointer to parameterization of DeviceSpmv1ColKernel
-        SpmvSearchKernelT       spmv_search_kernel,                 ///< [in] Kernel function pointer to parameterization of AgentSpmvSearchKernel
-        SpmvKernelT             spmv_kernel,                        ///< [in] Kernel function pointer to parameterization of AgentSpmvKernel
-        SegmentFixupKernelT     segment_fixup_kernel,               ///< [in] Kernel function pointer to parameterization of cub::DeviceSegmentFixupKernel
-        KernelConfig            spmv_config,                        ///< [in] Dispatch parameters that match the policy that \p spmv_kernel was compiled for
-        KernelConfig            segment_fixup_config)               ///< [in] Dispatch parameters that match the policy that \p segment_fixup_kernel was compiled for
-    {
-        cudaError error = cudaSuccess;
-        do {
-            if (spmv_params.num_rows < 0 || spmv_params.num_cols < 0) {
-              return cudaErrorInvalidValue;
-            }
+    // /**
+    //  * Internal dispatch routine for computing a device-wide reduction using the
+    //  * specified kernel functions.
+    //  *
+    //  * If the input is larger than a single tile, this method uses two-passes of
+    //  * kernel invocations.
+    //  */
+    // template <
+    //     typename                Spmv1ColKernelT,                    ///< Function type of cub::DeviceSpmv1ColKernel
+    //     typename                SpmvSearchKernelT,                  ///< Function type of cub::AgentSpmvSearchKernel
+    //     typename                SpmvKernelT,                        ///< Function type of cub::AgentSpmvKernel
+    //     typename                SegmentFixupKernelT>                 ///< Function type of cub::DeviceSegmentFixupKernelT
+    // CUB_RUNTIME_FUNCTION __forceinline__
+    // static cudaError_t Dispatch(
+    //     void*                   d_temp_storage,                     ///< [in] %Device-accessible allocation of temporary storage.  When NULL, the required allocation size is written to \p temp_storage_bytes and no work is done.
+    //     size_t&                 temp_storage_bytes,                 ///< [in,out] Reference to size in bytes of \p d_temp_storage allocation
+    //     SpmvParamsT&            spmv_params,                        ///< SpMV input parameter bundle
+    //     cudaStream_t            stream,                             ///< [in] CUDA stream to launch kernels within.  Default is stream<sub>0</sub>.
+    //     bool                    debug_synchronous,                  ///< [in] Whether or not to synchronize the stream after every kernel launch to check for errors.  Also causes launch configurations to be printed to the console.  Default is \p false.
+    //     Spmv1ColKernelT         spmv_1col_kernel,                   ///< [in] Kernel function pointer to parameterization of DeviceSpmv1ColKernel
+    //     SpmvSearchKernelT       spmv_search_kernel,                 ///< [in] Kernel function pointer to parameterization of AgentSpmvSearchKernel
+    //     SpmvKernelT             spmv_kernel,                        ///< [in] Kernel function pointer to parameterization of AgentSpmvKernel
+    //     SegmentFixupKernelT     segment_fixup_kernel,               ///< [in] Kernel function pointer to parameterization of cub::DeviceSegmentFixupKernel
+    //     KernelConfig            spmv_config,                        ///< [in] Dispatch parameters that match the policy that \p spmv_kernel was compiled for
+    //     KernelConfig            segment_fixup_config)               ///< [in] Dispatch parameters that match the policy that \p segment_fixup_kernel was compiled for
+    // {
+    //     cudaError error = cudaSuccess;
+    //     do {
+    //         if (spmv_params.num_rows < 0 || spmv_params.num_cols < 0) {
+    //           return cudaErrorInvalidValue;
+    //         }
 
-            if (spmv_params.num_rows == 0 || spmv_params.num_cols == 0) { // Empty problem, no-op.
-                if (d_temp_storage == NULL) {
-                    temp_storage_bytes = 1;
-                }
+    //         if (spmv_params.num_rows == 0 || spmv_params.num_cols == 0) { // Empty problem, no-op.
+    //             if (d_temp_storage == NULL) {
+    //                 temp_storage_bytes = 1;
+    //             }
 
-                break;
-            }
+    //             break;
+    //         }
 
-            if (spmv_params.num_cols == 1) {
-                if (d_temp_storage == NULL) {
-                    // Return if the caller is simply requesting the size of the storage allocation
-                    temp_storage_bytes = 1;
-                    break;
-                }
+    //         if (spmv_params.num_cols == 1) {
+    //             if (d_temp_storage == NULL) {
+    //                 // Return if the caller is simply requesting the size of the storage allocation
+    //                 temp_storage_bytes = 1;
+    //                 break;
+    //             }
 
-                // Get search/init grid dims
-                int degen_col_kernel_block_size     = INIT_KERNEL_THREADS;
-                int degen_col_kernel_grid_size      = cub::DivideAndRoundUp(spmv_params.num_rows, degen_col_kernel_block_size);
+    //             // Get search/init grid dims
+    //             int degen_col_kernel_block_size     = INIT_KERNEL_THREADS;
+    //             int degen_col_kernel_grid_size      = cub::DivideAndRoundUp(spmv_params.num_rows, degen_col_kernel_block_size);
 
-                if (debug_synchronous) _CubLog("Invoking spmv_1col_kernel<<<%d, %d, 0, %lld>>>()\n",
-                    degen_col_kernel_grid_size, degen_col_kernel_block_size, (long long) stream);
+    //             if (debug_synchronous) _CubLog("Invoking spmv_1col_kernel<<<%d, %d, 0, %lld>>>()\n",
+    //                 degen_col_kernel_grid_size, degen_col_kernel_block_size, (long long) stream);
 
-                // Invoke spmv_kernel
-                spmv_1col_kernel<<<degen_col_kernel_grid_size, degen_col_kernel_block_size, 0, stream>>>(
-                    spmv_params);
+    //             // Invoke spmv_kernel
+    //             spmv_1col_kernel<<<degen_col_kernel_grid_size, degen_col_kernel_block_size, 0, stream>>>(
+    //                 spmv_params);
 
-                // Check for failure to launch
-                if (CubDebug(error = cudaPeekAtLastError())) break;
+    //             // Check for failure to launch
+    //             if (CubDebug(error = cudaPeekAtLastError())) break;
 
-                // Sync the stream if specified to flush runtime errors
-                if (debug_synchronous && (CubDebug(error = cub::SyncStream(stream)))) break;
+    //             // Sync the stream if specified to flush runtime errors
+    //             if (debug_synchronous && (CubDebug(error = cub::SyncStream(stream)))) break;
 
-                break;
-            }
+    //             break;
+    //         }
 
-            // Get device ordinal
-            int device_ordinal;
-            if (CubDebug(error = cudaGetDevice(&device_ordinal))) break;
+    //         // Get device ordinal
+    //         int device_ordinal;
+    //         if (CubDebug(error = cudaGetDevice(&device_ordinal))) break;
 
-            // Get SM count
-            int sm_count;
-            if (CubDebug(error = cudaDeviceGetAttribute(&sm_count, cudaDevAttrMultiProcessorCount, device_ordinal))) break;
+    //         // Get SM count
+    //         int sm_count;
+    //         if (CubDebug(error = cudaDeviceGetAttribute(&sm_count, cudaDevAttrMultiProcessorCount, device_ordinal))) break;
 
-            // Get max x-dimension of grid
-            int max_dim_x;
-            if (CubDebug(error = cudaDeviceGetAttribute(&max_dim_x, cudaDevAttrMaxGridDimX, device_ordinal))) break;;
+    //         // Get max x-dimension of grid
+    //         int max_dim_x;
+    //         if (CubDebug(error = cudaDeviceGetAttribute(&max_dim_x, cudaDevAttrMaxGridDimX, device_ordinal))) break;;
 
-            // Total number of spmv work items
-            // SpMV总共需要需要合并的元素个数
-            offset_t num_merge_items = offset_t(spmv_params.num_rows) + spmv_params.num_nonzeros;
+    //         // Total number of spmv work items
+    //         // SpMV总共需要需要合并的元素个数
+    //         offset_t num_merge_items = offset_t(spmv_params.num_rows) + spmv_params.num_nonzeros;
 
-            // Tile sizes of kernels
-            // SpMV kernel线程块总共需要处理的元素数
-            int merge_tile_size              = spmv_config.block_threads * spmv_config.items_per_thread;
-            // fixup kernel线程块总共需要处理的元素数
-            int segment_fixup_tile_size     = segment_fixup_config.block_threads * segment_fixup_config.items_per_thread;
+    //         // Tile sizes of kernels
+    //         // SpMV kernel线程块总共需要处理的元素数
+    //         int merge_tile_size              = spmv_config.block_threads * spmv_config.items_per_thread;
+    //         // fixup kernel线程块总共需要处理的元素数
+    //         int segment_fixup_tile_size     = segment_fixup_config.block_threads * segment_fixup_config.items_per_thread;
 
-            // Number of tiles for kernels
-            // SpMV kernel所需的线程块数
-            offset_t num_merge_tiles            = cub::DivideAndRoundUp(num_merge_items, merge_tile_size);
-            // fixup kernel所需的线程块个数
-            offset_t num_segment_fixup_tiles    = cub::DivideAndRoundUp(num_merge_tiles, segment_fixup_tile_size);
+    //         // Number of tiles for kernels
+    //         // SpMV kernel所需的线程块数
+    //         offset_t num_merge_tiles            = cub::DivideAndRoundUp(num_merge_items, merge_tile_size);
+    //         // fixup kernel所需的线程块个数
+    //         offset_t num_segment_fixup_tiles    = cub::DivideAndRoundUp(num_merge_tiles, segment_fixup_tile_size);
 
-            // Get SM occupancy for kernels
-            // 每个SM可驻留的SpMV kernel的线程块的最大数
-            int spmv_sm_occupancy;
-            if (CubDebug(error = MaxSmOccupancy(
-                spmv_sm_occupancy,
-                spmv_kernel,
-                spmv_config.block_threads))) break;
+    //         // Get SM occupancy for kernels
+    //         // 每个SM可驻留的SpMV kernel的线程块的最大数
+    //         int spmv_sm_occupancy;
+    //         if (CubDebug(error = MaxSmOccupancy(
+    //             spmv_sm_occupancy,
+    //             spmv_kernel,
+    //             spmv_config.block_threads))) break;
 
-            // 每个SM可驻留的fixup kernel的线程块的最大数
-            int segment_fixup_sm_occupancy;
-            if (CubDebug(error = MaxSmOccupancy(
-                segment_fixup_sm_occupancy,
-                segment_fixup_kernel,
-                segment_fixup_config.block_threads))) break;
+    //         // 每个SM可驻留的fixup kernel的线程块的最大数
+    //         int segment_fixup_sm_occupancy;
+    //         if (CubDebug(error = MaxSmOccupancy(
+    //             segment_fixup_sm_occupancy,
+    //             segment_fixup_kernel,
+    //             segment_fixup_config.block_threads))) break;
 
-            // Get grid dimensions
-            dim3 spmv_grid_size(
-                CUB_MIN(num_merge_tiles, max_dim_x),
-                cub::DivideAndRoundUp(num_merge_tiles, max_dim_x),
-                1);
+    //         // Get grid dimensions
+    //         dim3 spmv_grid_size(
+    //             CUB_MIN(num_merge_tiles, max_dim_x),
+    //             cub::DivideAndRoundUp(num_merge_tiles, max_dim_x),
+    //             1);
 
-            dim3 segment_fixup_grid_size(
-                CUB_MIN(num_segment_fixup_tiles, max_dim_x),
-                cub::DivideAndRoundUp(num_segment_fixup_tiles, max_dim_x),
-                1);
+    //         dim3 segment_fixup_grid_size(
+    //             CUB_MIN(num_segment_fixup_tiles, max_dim_x),
+    //             cub::DivideAndRoundUp(num_segment_fixup_tiles, max_dim_x),
+    //             1);
 
-            // Get the temporary storage allocation requirements
-            size_t allocation_sizes[3]; // 3表示需要3部分临时内存
-            // bytes needed for reduce-by-key tile status descriptors
-            if (CubDebug(error = ScanTileStateT::AllocationSize(num_segment_fixup_tiles, allocation_sizes[0]))) break;
-            // bytes needed for block carry-out pairs
-            allocation_sizes[1] = num_merge_tiles * sizeof(KeyValuePairT);
-            // bytes needed for tile starting coordinates
-            allocation_sizes[2] = (num_merge_tiles + 1) * sizeof(CoordinateT);
+    //         // Get the temporary storage allocation requirements
+    //         size_t allocation_sizes[3]; // 3表示需要3部分临时内存
+    //         // bytes needed for reduce-by-key tile status descriptors
+    //         if (CubDebug(error = ScanTileStateT::AllocationSize(num_segment_fixup_tiles, allocation_sizes[0]))) break;
+    //         // bytes needed for block carry-out pairs
+    //         allocation_sizes[1] = num_merge_tiles * sizeof(KeyValuePairT);
+    //         // bytes needed for tile starting coordinates
+    //         allocation_sizes[2] = (num_merge_tiles + 1) * sizeof(CoordinateT);
 
-            // Alias the temporary allocations from the single storage blob (or compute the necessary size of the blob)
-            void* allocations[3] = {};
-            // 计算256字节对齐后所需临时内存大小,并将对应部分的内存指针存到allocations数组
-            if (CubDebug(error = cub::AliasTemporaries(d_temp_storage, temp_storage_bytes, allocations, allocation_sizes))) break;
-            if (d_temp_storage == NULL) {
-                // Return if the caller is simply requesting the size of the storage allocation
-                break;
-            }
+    //         // Alias the temporary allocations from the single storage blob (or compute the necessary size of the blob)
+    //         void* allocations[3] = {};
+    //         // 计算256字节对齐后所需临时内存大小,并将对应部分的内存指针存到allocations数组
+    //         if (CubDebug(error = cub::AliasTemporaries(d_temp_storage, temp_storage_bytes, allocations, allocation_sizes))) break;
+    //         if (d_temp_storage == NULL) {
+    //             // Return if the caller is simply requesting the size of the storage allocation
+    //             break;
+    //         }
 
-            // Construct the tile status interface
-            ScanTileStateT tile_state;
-            // 设置用于scan操作的设备内存
-            if (CubDebug(error = tile_state.Init(num_segment_fixup_tiles, allocations[0], allocation_sizes[0]))) break;
+    //         // Construct the tile status interface
+    //         ScanTileStateT tile_state;
+    //         // 设置用于scan操作的设备内存
+    //         if (CubDebug(error = tile_state.Init(num_segment_fixup_tiles, allocations[0], allocation_sizes[0]))) break;
 
-            // Alias the other allocations
-            KeyValuePairT*  d_tile_carry_pairs      = (KeyValuePairT*) allocations[1];  // Agent carry-out pairs
-            CoordinateT*    d_tile_coordinates      = (CoordinateT*) allocations[2];    // Agent starting coordinates
+    //         // Alias the other allocations
+    //         KeyValuePairT*  d_tile_carry_pairs      = (KeyValuePairT*) allocations[1];  // Agent carry-out pairs
+    //         CoordinateT*    d_tile_coordinates      = (CoordinateT*) allocations[2];    // Agent starting coordinates
 
-            // Get search/init grid dims
-            int search_block_size   = INIT_KERNEL_THREADS;
-            // 前缀和需要总数+1
-            offset_t search_grid_size    = cub::DivideAndRoundUp(num_merge_tiles + 1, search_block_size);
+    //         // Get search/init grid dims
+    //         int search_block_size   = INIT_KERNEL_THREADS;
+    //         // 前缀和需要总数+1
+    //         offset_t search_grid_size    = cub::DivideAndRoundUp(num_merge_tiles + 1, search_block_size);
 
 
-            if (search_grid_size < sm_count) {
-                // Not enough spmv tiles to saturate the device: have spmv blocks search their own staring coords
-                // search kernel的网格数少于SM数,则让不使用单独的search kernel搜索起始坐标,而在SpMV kernel中搜索
-                d_tile_coordinates = NULL;
-            } else {
-                // Use separate search kernel if we have enough spmv tiles to saturate the device
+    //         if (search_grid_size < sm_count) {
+    //             // Not enough spmv tiles to saturate the device: have spmv blocks search their own staring coords
+    //             // search kernel的网格数少于SM数,则让不使用单独的search kernel搜索起始坐标,而在SpMV kernel中搜索
+    //             d_tile_coordinates = NULL;
+    //         } else {
+    //             // Use separate search kernel if we have enough spmv tiles to saturate the device
 
-                // Log spmv_search_kernel configuration
-                if (debug_synchronous) _CubLog("Invoking spmv_search_kernel<<<%d, %d, 0, %lld>>>()\n",
-                    search_grid_size, search_block_size, (long long) stream);
+    //             // Log spmv_search_kernel configuration
+    //             if (debug_synchronous) _CubLog("Invoking spmv_search_kernel<<<%d, %d, 0, %lld>>>()\n",
+    //                 search_grid_size, search_block_size, (long long) stream);
 
-                // Invoke spmv_search_kernel
-                // 计算每个线程块分片的合并序列的起始坐标
-                spmv_search_kernel<<<search_grid_size, search_block_size, 0, stream>>>(
-                    num_merge_tiles,
-                    d_tile_coordinates,
-                    spmv_params);
+    //             // Invoke spmv_search_kernel
+    //             // 计算每个线程块分片的合并序列的起始坐标
+    //             spmv_search_kernel<<<search_grid_size, search_block_size, 0, stream>>>(
+    //                 num_merge_tiles,
+    //                 d_tile_coordinates,
+    //                 spmv_params);
 
-                // Check for failure to launch
-                if (CubDebug(error = cudaPeekAtLastError())) break;
+    //             // Check for failure to launch
+    //             if (CubDebug(error = cudaPeekAtLastError())) break;
 
-                // Sync the stream if specified to flush runtime errors
-                if (debug_synchronous && (CubDebug(error = cub::SyncStream(stream)))) break;
-            }
+    //             // Sync the stream if specified to flush runtime errors
+    //             if (debug_synchronous && (CubDebug(error = cub::SyncStream(stream)))) break;
+    //         }
 
-            // Log spmv_kernel configuration
-            if (debug_synchronous) _CubLog("Invoking spmv_kernel<<<{%d,%d,%d}, %d, 0, %lld>>>(), %d items per thread, %d SM occupancy\n",
-                spmv_grid_size.x, spmv_grid_size.y, spmv_grid_size.z, spmv_config.block_threads, (long long) stream, spmv_config.items_per_thread, spmv_sm_occupancy);
+    //         // Log spmv_kernel configuration
+    //         if (debug_synchronous) _CubLog("Invoking spmv_kernel<<<{%d,%d,%d}, %d, 0, %lld>>>(), %d items per thread, %d SM occupancy\n",
+    //             spmv_grid_size.x, spmv_grid_size.y, spmv_grid_size.z, spmv_config.block_threads, (long long) stream, spmv_config.items_per_thread, spmv_sm_occupancy);
 
-            // Invoke spmv_kernel
-            spmv_kernel<<<spmv_grid_size, spmv_config.block_threads, 0, stream>>>(
-                spmv_params,
-                d_tile_coordinates,
-                d_tile_carry_pairs,
-                num_merge_tiles,
-                tile_state,
-                num_segment_fixup_tiles);
+    //         // Invoke spmv_kernel
+    //         spmv_kernel<<<spmv_grid_size, spmv_config.block_threads, 0, stream>>>(
+    //             spmv_params,
+    //             d_tile_coordinates,
+    //             d_tile_carry_pairs,
+    //             num_merge_tiles,
+    //             tile_state,
+    //             num_segment_fixup_tiles);
 
-            // Check for failure to launch
-            if (CubDebug(error = cudaPeekAtLastError())) break;
+    //         // Check for failure to launch
+    //         if (CubDebug(error = cudaPeekAtLastError())) break;
 
-            // Sync the stream if specified to flush runtime errors
-            if (debug_synchronous && (CubDebug(error = cub::SyncStream(stream)))) break;
+    //         // Sync the stream if specified to flush runtime errors
+    //         if (debug_synchronous && (CubDebug(error = cub::SyncStream(stream)))) break;
 
-            // Run reduce-by-key fixup if necessary
-            // 线程块分片大于1时需要修复跨行结果
-            if (num_merge_tiles > 1) {
-                // Log segment_fixup_kernel configuration
-                if (debug_synchronous) _CubLog("Invoking segment_fixup_kernel<<<{%d,%d,%d}, %d, 0, %lld>>>(), %d items per thread, %d SM occupancy\n",
-                    segment_fixup_grid_size.x, segment_fixup_grid_size.y, segment_fixup_grid_size.z, segment_fixup_config.block_threads, (long long) stream, segment_fixup_config.items_per_thread, segment_fixup_sm_occupancy);
+    //         // Run reduce-by-key fixup if necessary
+    //         // 线程块分片大于1时需要修复跨行结果
+    //         if (num_merge_tiles > 1) {
+    //             // Log segment_fixup_kernel configuration
+    //             if (debug_synchronous) _CubLog("Invoking segment_fixup_kernel<<<{%d,%d,%d}, %d, 0, %lld>>>(), %d items per thread, %d SM occupancy\n",
+    //                 segment_fixup_grid_size.x, segment_fixup_grid_size.y, segment_fixup_grid_size.z, segment_fixup_config.block_threads, (long long) stream, segment_fixup_config.items_per_thread, segment_fixup_sm_occupancy);
 
-                // Invoke segment_fixup_kernel
-                segment_fixup_kernel<<<segment_fixup_grid_size, segment_fixup_config.block_threads, 0, stream>>>(
-                    d_tile_carry_pairs,
-                    spmv_params.d_vector_y,
-                    num_merge_tiles,
-                    num_segment_fixup_tiles,
-                    tile_state);
+    //             // Invoke segment_fixup_kernel
+    //             segment_fixup_kernel<<<segment_fixup_grid_size, segment_fixup_config.block_threads, 0, stream>>>(
+    //                 d_tile_carry_pairs,
+    //                 spmv_params.d_vector_y,
+    //                 num_merge_tiles,
+    //                 num_segment_fixup_tiles,
+    //                 tile_state);
 
-                // Check for failure to launch
-                if (CubDebug(error = cudaPeekAtLastError())) break;
+    //             // Check for failure to launch
+    //             if (CubDebug(error = cudaPeekAtLastError())) break;
 
-                // Sync the stream if specified to flush runtime errors
-                if (debug_synchronous && (CubDebug(error = cub::SyncStream(stream)))) break;
-            }
-        } while (0);
+    //             // Sync the stream if specified to flush runtime errors
+    //             if (debug_synchronous && (CubDebug(error = cub::SyncStream(stream)))) break;
+    //         }
+    //     } while (0);
 
-        return error;
-    }
+    //     return error;
+    // }
 
 
     // /**

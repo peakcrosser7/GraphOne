@@ -20,14 +20,12 @@ struct SpmvDispatcher<SpmvCudaCsrVector, functor_t,
 
     using spmv_params_t =
         SpmvParams<index_t, offset_t, mat_value_t, vec_x_value_t, vec_y_value_t>;
-
-    SpmvDispatcher() = default;
     
     SpmvDispatcher(spmv_params_t &spmv_params)
     : params(spmv_params),
       nnz_per_row(spmv_params.nnz / spmv_params.n_rows) {}
 
-    void operator()() {
+    void operator() (bool sync = true) {
         cudaError_t error;
         if (nnz_per_row <= 2) {
             error = SpMV_cuda_csr_vector<2, functor_t>(
@@ -51,6 +49,10 @@ struct SpmvDispatcher<SpmvCudaCsrVector, functor_t,
             params.n_rows, params.row_offsets, params.col_indices,
             params.values, params.vector_x, params.vector_y);
         checkCudaErrors(error);
+
+        if(sync) {
+            checkCudaErrors(cudaDeviceSynchronize());
+        }
     }
 
     spmv_params_t params;
@@ -69,13 +71,11 @@ template <typename functor_t,
 struct SpmvDispatcher<SpmvCudaMergeBased, functor_t, 
                       index_t, offset_t, mat_value_t,
                       vec_x_value_t, vec_y_value_t> {
-    SpmvDispatcher() = default;
 
     SpmvDispatcher(SpmvParams<index_t, offset_t, mat_value_t, vec_x_value_t, vec_y_value_t> &spmv_params)
     : spmv_obj(), 
       temp_storage_bytes(0), 
       d_temp_storage(nullptr) {
-        
         params.d_values = spmv_params.values;
         params.d_row_end_offsets = spmv_params.row_offsets + 1;
         params.d_column_indices = spmv_params.col_indices;
@@ -90,8 +90,11 @@ struct SpmvDispatcher<SpmvCudaMergeBased, functor_t,
         checkCudaErrors(spmv_obj.SegmentSearch(d_temp_storage, temp_storage_bytes, params));
     }
 
-    void operator() () {
-        checkCudaErrors(spmv_obj.Dispatch(d_temp_storage, temp_storage_bytes, params));
+    void operator() (bool sync = true) {
+        checkCudaErrors(spmv_obj.SpmvMerge(d_temp_storage, temp_storage_bytes, params));
+        if (sync) {
+            checkCudaErrors(cudaDeviceSynchronize());
+        }
     }
 
     ~SpmvDispatcher() {

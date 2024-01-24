@@ -21,10 +21,14 @@ inline char* strncat(char* dest, const char* src, unsigned n) {
     return dest;
 }
 
+/// ONLY DEBUG should define, otherwise GPU print too much
+/// will Segment fault
+// #define DEBUG_KERNEL
+
 template <typename ... Ts>
 __GENLX_CUDA_INL__
 void print(const char* fmt, Ts&&... args) {
-#if defined(DEBUG_CUDA) && defined(DEBUG_LOG)
+#if defined(DEBUG_KERNEL) && defined(DEBUG_LOG)
     char buf[256] = "[DEBUG-KERNEL] ";
     archi::cuda::strncat(buf, fmt, sizeof(buf) - 16);
     printf(buf, args...);

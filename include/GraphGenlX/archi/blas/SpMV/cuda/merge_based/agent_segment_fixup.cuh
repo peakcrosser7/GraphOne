@@ -47,9 +47,12 @@
 
 namespace graph_genlx::blas::merge {
 
-template <typename T, typename ReductionOpT, 
-          typename std::enable_if_t<std::is_same_v<T, int> || std::is_same_v<T, unsigned>>* = nullptr>
-__device__ void AtomicReduce(T *address, T val, ReductionOpT reduce) {
+template <typename T, typename ReductionOpT>
+__device__ 
+typename std::enable_if_t<
+    std::is_same_v<T, int> || std::is_same_v<T, unsigned>
+>
+AtomicReduce(T *address, T val, ReductionOpT reduce) {
    T old = *address, assumed;
    do {
       assumed = old;
@@ -57,9 +60,13 @@ __device__ void AtomicReduce(T *address, T val, ReductionOpT reduce) {
    } while (assumed != old);    
 }
 
-template <typename T, typename ReductionOpT,
-          typename std::enable_if_t<sizeof(T) == 4>* = nullptr>
-__device__ void AtomicReduce(T *address, T val, ReductionOpT reduce) {
+template <typename T, typename ReductionOpT>
+__device__ 
+typename std::enable_if_t<
+    !std::is_same_v<T, int> && !std::is_same_v<T, unsigned> && 
+    sizeof(T) == 4
+>
+AtomicReduce(T *address, T val, ReductionOpT reduce) {
     int * addr_as_int = reinterpret_cast<int *>(address);
     int old = *address, assumed{};
     T& assumed_T_ref = reinterpret_cast<T &>(assumed);
