@@ -1,6 +1,6 @@
 #pragma once
 
-// #define DEBUG_THRUST
+#include "GraphGenlX/debug/debug.hpp"
 
 #ifdef DEBUG_THRUST
     #include <exception>

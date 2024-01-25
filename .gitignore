@@ -1,7 +1,8 @@
 .vscode/
 
-build/
+/build/
 cmake-build-*/
-bin/
-datasets/
-output/
+/bin/
+/datasets/
+/output/
+/debug/

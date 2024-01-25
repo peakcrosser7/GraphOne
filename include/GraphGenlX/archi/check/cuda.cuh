@@ -1,6 +1,6 @@
 #pragma once
 
-#define DEBUG_CUDA
+#include "GraphGenlX/debug/debug.hpp"
 
 namespace graph_genlx {
 

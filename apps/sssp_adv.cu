@@ -40,7 +40,6 @@ struct SSSPComp : ComponentX<graph_t, sssp_hstatus_t, sssp_dstatus_t> {
     }
 
     void BeforeEngine() override {
-        // comp_t::BeforeEngine();
         ++this->d_status.iter;
     }
 };
@@ -66,10 +65,10 @@ struct SSSPFunctor : AdvanceFunctor<vid_t, eid_t, dist_t, sssp_dstatus_t> {
         auto& visited = d_status.visited;
         auto& iter = d_status.iter;
         if (visited[vid] == iter) {
-            return false;
+            return true;
         }
         visited[vid] = iter;
-        return true;
+        return false;
     }
 };
 

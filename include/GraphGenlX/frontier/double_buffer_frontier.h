@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vector>
+#include <string>
 
 #include "GraphGenlX/type.hpp"
 #include "GraphGenlX/utils.h"
@@ -52,7 +52,8 @@ public:
 
 
     template <typename ...vids_t>
-    DblBufFrontier(index_t size, vids_t... vids) {
+    DblBufFrontier(index_t size, vids_t... vids)
+    : input_selector_(0), in_size_(0), out_size_(0), frontiers_() {
         index_t sz = sizeof...(vids);
         index_t max_sz = std::max(size, sz);
         reserve_input(max_sz);
@@ -65,8 +66,8 @@ public:
         } else {
             Buffer<arch_t::cpu, vertex_t, index_t> h_buf(sz);
             ((h_buf[i++] = vids), ...);
-            frontiers_[input_selector_] = h_buf;
-        }  
+            frontiers_[input_selector_].copy_from(h_buf);
+        }
     }
 
     void reserve_input(index_t size) {
@@ -89,20 +90,11 @@ public:
     }
 
     void reset_output(index_t size) {
-        // LOG_DEBUG("reset_output  ouput_size=", out_size_, 
-        //           " output buf size=", frontiers_[!input_selector_].size(),
-        //           " param size=", size);
         if (size > frontiers_[!input_selector_].size()) {
             frontiers_[!input_selector_].reset(size * 2);
         }
         out_size_ = size;
-        // LOG_DEBUG("reset_output end, new output_size=", out_size_,
-        //           " output buf size=", frontiers_[!input_selector_].size());
     }
-
-    // void reset(index_t size) {
-    //     reset_output(size);
-    // }
 
     index_t input_size() const {
         return in_size_;
@@ -117,10 +109,6 @@ public:
         std::swap(in_size_, out_size_);
     }
 
-    // bool empty() {
-    //     return in_size_ == 0;
-    // }
-
     const Buffer<arch, vertex_t, index_t>& input() const {
         return frontiers_[input_selector_];
     }
@@ -128,54 +116,6 @@ public:
     Buffer<arch, vertex_t, index_t>& output() {
         return frontiers_[!input_selector_];
     }
-
-    // todo: move to adv engine, it's not general.
-    // template <typename graph_t>
-    // typename graph_t::edge_type CaclOuputSize(const graph_t& g) {
-    //     using edge_t = typename graph_t::edge_type;
-    //     auto graph_ref = g.ToArch();
-    //     auto frontier_ref = ToArch();
-    //     auto v_degree_func = [=] __GENLX_ARCH__ (const vertex_t &i) {
-    //             auto vid = frontier_ref.get(i);
-    //             // archi::cuda::print("vid=%u, degree=%u\n", vid, graph_ref.get_degree(vid));
-    //             return (utils::is_vertex_valid<graph_t::vstart_value>(vid)
-    //                         ? graph_ref.get_degree(vid) : 0);
-    //     };
-
-    //     return archi::transform_reduce<arch>(
-    //         thrust::make_counting_iterator<vertex_t>(0),
-    //         thrust::make_counting_iterator<vertex_t>(in_size_),
-    //         v_degree_func,
-    //         edge_t(0),
-    //         thrust::plus<edge_t>()
-    //     );
-    // }
-
-    // void Init(index_t size, const std::vector<vertex_t>& vids) {
-    //     index_t sz = vids.size();
-    //     index_t max_sz = std::max(size, sz);
-    //     reserve_input(max_sz);
-    //     reserve_output(max_sz);
-    //     reset_input(sz);
-    //     int i = 0;
-    //     if constexpr (arch == arch_t::cpu) {
-    //         for(vertex_t vid: vids) {
-    //             frontiers_[input_selector_][i++] = vid;
-    //         }
-    //     } else {
-    //         Buffer<arch_t::cpu, vertex_t, index_t> h_buf(sz);
-    //         for (vertex_t vid: vids) {
-    //             h_buf[i++] = vid;
-    //         }
-    //         frontiers_[input_selector_] = h_buf;
-    //     }  
-    // }
-
-    // template <typename graph_t>
-    // void BeforeEngine(const graph_t& g) {
-    //     auto sz = CaclOuputSize(g);
-    //     reset_output(sz);
-    // }
 
     arch_ref_t ToArch() {
         arch_ref_t arch_ref;
@@ -188,6 +128,21 @@ public:
         return arch_ref;
     }
 
+    std::string ToString() const {
+        std::string str;
+        str += "DblBufFrontier{ ";
+        str += "input_selector_:" + utils::NumToString(input_selector_) + ", ";
+        str += "in_size_:" + utils::NumToString(in_size_) + ", ";
+        str += "out_size_:" + utils::NumToString(out_size_) + ", ";
+        str += "(input)frontiers_[" + utils::NumToString(input_selector_) + "]:" 
+                + BufferToString_(frontiers_[input_selector_], in_size_) + ", ";
+        str += "(output)frontiers_[" + utils::NumToString(!input_selector_) + "]:"
+                + BufferToString_(frontiers_[!input_selector_], out_size_);
+        str += " }";
+        return str;
+    }
+
+
     void AfterEngine() override {
         swap_inout();
     }
@@ -196,8 +151,36 @@ public:
         return in_size_ == 0;
     }
 
+private:
+    static std::string 
+    BufferToString_(const Buffer<arch, vertex_t, index_t>& frontier, index_t size) {
+        size = std::min(size, frontier.size());
+        std::string str("[");
+        if constexpr (arch != arch_t::cpu) {
+            vertex_t* h_data = archi::memalloc<arch_t::cpu, vertex_t>(size);
+            archi::memcpy<arch_t::cpu, arch, vertex_t>(h_data, frontier.data(), size);
+            for (index_t i = 0; i < size; ++i) {
+                str += utils::NumToString(h_data[i]);
+                if (i < size - 1) {
+                    str += ",";
+                }
+            }
+            archi::memfree<arch_t::cpu, vertex_t>(h_data);
+        } else {
+            const vertex_t* h_data = frontier.data();
+            for (index_t i = 0; i < size; ++i) {
+                str += utils::NumToString(h_data[i]);
+                if (i < size - 1) {
+                    str += ",";
+                }
+            }
+        }
+        str += "]";
+        return str;
+    }
+
 protected:
-    bool input_selector_{0};
+    bool input_selector_;
     index_t in_size_;
     index_t out_size_;
     Buffer<arch, vertex_t, index_t> frontiers_[2];

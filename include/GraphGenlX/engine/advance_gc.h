@@ -169,7 +169,7 @@ public:
     void Forward() override {
         // nvtx3::scoped_range r{"Forward"};
         ResizeOuput();
-        advance_engine(this->graph_, this->d_status_, this->frontier_); 
+        advance_engine(this->graph_, this->d_status_, this->frontier_);
         filter_engine(this->graph_, this->d_status_, this->frontier_);
     }
 
@@ -204,32 +204,32 @@ public:
 
         if constexpr (!frontier_t::has_output || !HasFilter::value) {
             return;
+        } else {
+            constexpr auto vstart = graph_t::vstart_value;
+            using index_t = typename frontier_t::index_type;
+            using vertex_t = typename frontier_t::vertex_type;
+
+            LOG_DEBUG("filter begin");
+            frontier.swap_inout();
+
+            frontier.reset_output(frontier.input_size());
+            auto frontier_ref = frontier.ToArch();
+            auto bypass = [=] __GENLX_DEV__(const index_t &idx) {
+                vertex_t v = frontier_ref.get(idx);
+                if (!utils::is_vertex_valid<vstart>(v) ||
+                    functor_t::filter(v, d_status)) {
+                    return utils::invalid_vertex<vstart, vertex_t>();
+                }
+                return v;
+            };
+
+            archi::transform<arch>(
+                thrust::make_counting_iterator<index_t>(0),
+                thrust::make_counting_iterator<index_t>(frontier.input_size()),
+                frontier.output().data(), bypass);
+
+            LOG_DEBUG("filter end");
         }
-
-        constexpr auto vstart = graph_t::vstart_value;
-        using index_t = typename frontier_t::index_type;
-        using vertex_t = typename frontier_t::vertex_type;
-
-        LOG_DEBUG("filter begin");
-        frontier.swap_inout();
-
-        frontier.reset_output(frontier.input_size());
-        auto frontier_ref = frontier.ToArch();
-        auto bypass = [=] __GENLX_DEV__(const index_t &idx) {
-            vertex_t v = frontier_ref.get(idx);
-            if (!utils::is_vertex_valid<vstart>(v) ||
-                !functor_t::filter(v, d_status)) {
-                return utils::invalid_vertex<vstart, vertex_t>();
-            }
-            return v;
-        };
-
-        archi::transform<arch>(
-            thrust::make_counting_iterator<index_t>(0),
-            thrust::make_counting_iterator<index_t>(frontier.input_size()),
-            frontier.output().data(), bypass);
-
-        LOG_DEBUG("filter end");
     }
 
 protected:

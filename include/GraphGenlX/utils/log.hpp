@@ -3,11 +3,10 @@
 #include <string>
 #include <iostream>
 
+#include "GraphGenlX/debug/debug.hpp"
 #include "GraphGenlX/utils/string.hpp"
 
 namespace graph_genlx {
-
-// #define DEBUG_LOG
 
 constexpr const char LOG_INFO_STR[]    = "[INFO]  ";
 constexpr const char LOG_ERROR_STR[]   = "[ERROR] ";

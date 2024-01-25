@@ -16,6 +16,7 @@ public:
 
     explicit Buffer(index_t size)
         : size_(size), data_(archi::memalloc<arch, value_t>(size)) {
+        // @todo: remove it, now will occur Segment Fault
         archi::memset<arch, value_t>(data_, 0, size);
     }
 
@@ -44,9 +45,16 @@ public:
         // LOG_DEBUG << "buffer move ctor\n";
     }
 
-    void copy_from(const std::vector<value_t>& vec, index_t start = 0) {
-        index_t len = std::min(index_t(vec.size()), size_ - start);
-        archi::memcpy<arch, arch_t::cpu, value_t>(data_ + start, vec.data(), len);
+    /// @param buf_begin the beign index of the current Buffer which copyed to
+    void copy_from(const std::vector<value_t>& vec, index_t buf_begin = 0) {
+        index_t len = std::min(index_t(vec.size()), size_ - buf_begin);
+        archi::memcpy<arch, arch_t::cpu, value_t>(data_ + buf_begin, vec.data(), len);
+    }
+
+    template <arch_t from_arch>
+    void copy_from(const Buffer<from_arch, value_t, index_t>& src, index_t buf_begin = 0) {
+        index_t len = std::min(src.size(), size_ - buf_begin);
+        archi::memcpy<arch, from_arch, value_t>(data_ + buf_begin, src.data(), len);
     }
 
     Buffer& operator= (const Buffer& rhs) {

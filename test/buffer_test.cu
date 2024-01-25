@@ -31,8 +31,17 @@ int main() {
     Buffer<arch_t::cuda, int> gbuf;
     gbuf = buf;
 
-
     print<<<1,1>>>(gbuf.data(), gbuf.size());
+    cudaDeviceSynchronize();
+
+    Buffer<arch_t::cuda, int> ept_buf;
+    cout << "ept_buf:" << ept_buf.ToString() << endl;
+
+    constexpr int N_EPT = 3;
+    Buffer<arch_t::cuda, int> ept_bufs[N_EPT];
+    for (int i = 0; i < N_EPT; ++i) {
+        cout << "ept_buf[" << i << "]:" << ept_buf.ToString() << endl;
+    }
     
     return 0;
 }

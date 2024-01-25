@@ -2,6 +2,7 @@
 
 #include <cuda.h>
 
+#include "GraphGenlX/debug/debug.hpp"
 #include "GraphGenlX/archi/macro/cuda.cuh"
 
 namespace graph_genlx::archi::cuda {
@@ -20,10 +21,6 @@ inline char* strncat(char* dest, const char* src, unsigned n) {
     }
     return dest;
 }
-
-/// ONLY DEBUG should define, otherwise GPU print too much
-/// will Segment fault
-// #define DEBUG_KERNEL
 
 template <typename ... Ts>
 __GENLX_CUDA_INL__

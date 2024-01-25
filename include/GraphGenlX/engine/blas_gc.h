@@ -28,69 +28,6 @@ public:
     using info_t = typename functor_t::info_type;
     using gather_t = typename functor_t::gather_type;
 
-    constexpr static arch_t arch = graph_t::arch_value;
-
-    BlasEngine(comp_t &comp, frontier_t& frontier)
-        : base_t(comp, frontier), info_vec_(comp.graph.num_vertices()),
-          res_vec_(comp.graph.num_vertices()),
-          temp_buf_(comp.graph.num_vertices()),
-          spmv_() {
-        auto graph_ref = this->graph_.ToArch();
-        spmv_ = std::move(blas::MakeSpMV<arch, blas::SpmvCudaMergeBased, SpmvFunctor>(
-            graph_ref.num_vertices, graph_ref.num_vertices, graph_ref.num_edges,
-            graph_ref.row_offsets, graph_ref.col_indices, graph_ref.values,
-            info_vec_.data(), res_vec_.data()
-        ));
-    }
-
-    void Forward() {
-        Construct(this->d_status_, this->frontier_, info_vec_, res_vec_, temp_buf_);
-        Gather(spmv_);
-        Apply(this->d_status_, this->frontier_, res_vec_, temp_buf_);
-    }
-
-    static void Construct(const dstatus_t &d_status, const frontier_t &frontier, 
-                        DenseVec<arch, info_t, vertex_t>& info_vec,
-                        DenseVec<arch, gather_t, vertex_t>& res_vec,
-                        Buffer<arch, vertex_t, vertex_t>& temp_buf){
-        info_t* buffer = reinterpret_cast<info_t *>(temp_buf.data());
-        
-        archi::fill<arch>(info_vec.begin(), info_vec.end(), functor_t::default_info());
-        archi::fill<arch>(res_vec.begin(), res_vec.end(), functor_t::default_result());
-
-        archi::transform<arch>(frontier.input().begin(), frontier.input().end(), buffer,
-            [=] __GENLX_DEV__ (const vertex_t &vid) {
-                return functor_t::construct(vid, d_status);
-            });
-        archi::scatter<arch>(buffer, buffer + frontier.input_size(),
-                             frontier.input().begin(), info_vec.begin());
-    }
-
-    template <typename SPMV_OBJ>
-    static void Gather(SPMV_OBJ& spmv) {
-        spmv();
-    }
-
-    static void Apply(dstatus_t& d_status,
-                      frontier_t &frontier,
-                      const DenseVec<arch, gather_t, vertex_t>& res_vec,
-                      Buffer<arch, vertex_t, vertex_t>& temp_buf) {
-        bool* buffer = reinterpret_cast<bool *>(temp_buf.data());
-        archi::transform<arch>(res_vec.begin(), res_vec.end(), thrust::make_counting_iterator<vertex_t>(0), buffer,
-            [=] __GENLX_DEV__ (const gather_t& res, const vertex_t& vid) mutable {
-                if (res != functor_t::default_result()
-                    && functor_t::apply(vid, res, d_status)) {
-                    return true;
-                }
-                return false;
-            });
-        auto output_sz = archi::copy_if<arch>(thrust::make_counting_iterator<edge_t>(0),
-            thrust::make_counting_iterator<edge_t>(res_vec.size()),
-            buffer, frontier.output().begin(),
-            thrust::identity<bool>()) - frontier.output().begin();
-        frontier.reset_output(output_sz);
-    }
-
     struct SpmvFunctor {
         __GENLX_DEV_INL__
         static gather_t initialize() {
@@ -107,11 +44,83 @@ public:
             return functor_t::reduce(lhs, rhs);
         }
     };
-
-protected:
+    
     using spmv_t =
         blas::SpmvDispatcher<blas::SpmvCudaMergeBased, SpmvFunctor, vertex_t,
                              edge_t, weight_t, info_t, gather_t>;
+
+    constexpr static arch_t arch = graph_t::arch_value;
+
+    BlasEngine(comp_t &comp, frontier_t& frontier)
+        : base_t(comp, frontier), info_vec_(comp.graph.num_vertices()),
+          res_vec_(comp.graph.num_vertices()),
+          temp_buf_(comp.graph.num_vertices()),
+          spmv_(make_spmv_(this->graph_, info_vec_.data(), res_vec_.data())) {}
+
+    void Forward() {
+        Construct(this->d_status_, this->frontier_, info_vec_, res_vec_, temp_buf_);
+        Gather(spmv_);
+        LOG_DEBUG("res_vec: ", res_vec_);
+        Apply(this->d_status_, this->frontier_, res_vec_, temp_buf_);
+    }
+
+    static void Construct(const dstatus_t &d_status, const frontier_t &frontier, 
+                        DenseVec<arch, info_t, vertex_t>& info_vec,
+                        DenseVec<arch, gather_t, vertex_t>& res_vec,
+                        Buffer<arch, vertex_t, vertex_t>& temp_buf){
+        LOG_DEBUG("Construct begin");
+        info_t* buffer = reinterpret_cast<info_t *>(temp_buf.data());
+        
+        archi::fill<arch>(info_vec.begin(), info_vec.end(), functor_t::default_info());
+        archi::fill<arch>(res_vec.begin(), res_vec.end(), functor_t::default_result());
+
+        LOG_DEBUG("frontier_input:", frontier.input());
+        archi::transform<arch>(frontier.input().begin(), frontier.input().end(), buffer,
+            [=] __GENLX_DEV__ (const vertex_t &vid) {
+                return functor_t::construct(vid, d_status);
+            });
+        archi::scatter<arch>(buffer, buffer + frontier.input_size(),
+                             frontier.input().begin(), info_vec.begin());
+        LOG_DEBUG("info_vec: ", info_vec);
+    }
+
+    static void Gather(spmv_t& spmv) {
+        LOG_DEBUG("Gather begin");
+        spmv();
+    }
+
+    static void Apply(dstatus_t& d_status,
+                      frontier_t &frontier,
+                      const DenseVec<arch, gather_t, vertex_t>& res_vec,
+                      Buffer<arch, vertex_t, vertex_t>& temp_buf) {
+        LOG_DEBUG("Apply begin");
+        bool* buffer = reinterpret_cast<bool *>(temp_buf.data());
+        archi::transform<arch>(res_vec.begin(), res_vec.end(), thrust::make_counting_iterator<vertex_t>(0), buffer,
+            [=] __GENLX_DEV__ (const gather_t& res, const vertex_t& vid) mutable {
+                if (res != functor_t::default_result()
+                    && functor_t::apply(vid, res, d_status)) {
+                    return true;
+                }
+                return false;
+            });
+        auto output_sz = archi::copy_if<arch>(thrust::make_counting_iterator<edge_t>(0),
+            thrust::make_counting_iterator<edge_t>(res_vec.size()),
+            buffer, frontier.output().begin(),
+            thrust::identity<bool>()) - frontier.output().begin();
+        frontier.reset_output(output_sz);
+    }
+
+private:
+    static spmv_t make_spmv_(const graph_t& graph, info_t* info_vec, gather_t* res_vec) {
+        auto graph_ref = graph.ToArch();
+        return blas::MakeSpMV<arch, blas::SpmvCudaMergeBased, SpmvFunctor>(
+            graph_ref.num_vertices, graph_ref.num_vertices, graph_ref.num_edges,
+            graph_ref.row_offsets, graph_ref.col_indices, graph_ref.values,
+            info_vec, res_vec
+        );
+    }
+
+protected:
 
     DenseVec<arch, info_t, vertex_t> info_vec_;
     DenseVec<arch, gather_t, vertex_t> res_vec_;
@@ -134,12 +143,11 @@ struct BlasFunctor {
     using info_type = info_t;
     using gather_type = gather_t;
 
-    __GENLX_DEV_INL__
     static info_t default_info() {
         return info_t{0};
     }
 
-    __GENLX_DEV_INL__
+    __GENLX_ARCH_INL__
     static gather_t default_result() {
         return gather_t{0};
     }
@@ -157,6 +165,7 @@ struct BlasFunctor {
     __GENLX_DEV_INL__
     static gather_t reduce(const gather_t& lhs, const gather_t& rhs) {}
 
+    /// return true when activating this vertex
     __GENLX_DEV_INL__
     static bool apply(const vertex_t& vid, const gather_t& res, dstatus_t& d_status) {}
 };

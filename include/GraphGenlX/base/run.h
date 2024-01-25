@@ -14,6 +14,7 @@ void Run(comp_t& comp, frontier_t& frontier) {
 
     comp.Init();
     LOG_DEBUG(">>>comp initialized");
+    LOG_DEBUG("init ", frontier);
 
     while (comp.IsConvergent() == false && frontier.IsConvergent() == false) {
         LOG_DEBUG(">>>iter:", comp.d_status.iter);
@@ -24,11 +25,14 @@ void Run(comp_t& comp, frontier_t& frontier) {
 
         engine.Forward();
         LOG_DEBUG(">>>Forward done");
+        LOG_DEBUG(frontier);
 
         frontier.AfterEngine();
         comp.AfterEngine();
         LOG_DEBUG(">>>after engine proc done\n");
     }
+
+    LOG_DEBUG(">>>after convergent");
 }
 
 } // namespace graph_genlx
