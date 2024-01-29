@@ -1,4 +1,5 @@
 
+#include <cstdio>
 #include <iostream>
 #include <limits>
 #include <chrono>
@@ -74,17 +75,21 @@ struct SSSPFunctor : AdvanceFunctor<vid_t, eid_t, dist_t, sssp_dstatus_t> {
 
 int main(int argc, char *argv[]) {
     if (argc < 3) {
-        printx("Usage: ", argv[0], " <graph_file> <src_vertex>");
+        printx("Usage: ", argv[0], " <graph_file> <src_vertex> [output_path]");
         return -1;
     }
-    
+    string graph_file = argv[1];
     vid_t src = std::stoi(argv[2]);
- 
+    string output_path;
+    if (argc == 4) {
+        output_path = argv[3];
+    }
+
     Loader<vstart_t::FROM_1_TO_1, false> loader;
     LoadEdgeOpts opts;
     opts.comment_prefix = "%";
     // opts.is_directed = true;
-    auto cache = loader.LoadEdgesFromTxt<dist_t>(argv[1], opts);
+    auto cache = loader.LoadEdgesFromTxt<dist_t>(graph_file, opts);
     auto g = graph::build<arch_t::cuda, AdvanceViews>(cache);
     using graph_t = decltype(g);
 
@@ -107,10 +112,19 @@ int main(int argc, char *argv[]) {
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
     printx("Elapsed time: ", duration.count(), "ms");
- 
-    auto h_dists = dists.to<arch_t::cpu>();
-    for (int i = 0; i < min(500, h_dists.size()); ++i) {
-        printx(i, "-", h_dists[i]);
+    
+    if (!output_path.empty()) {
+        FILE* fp;
+        if ((fp = fopen(output_path.c_str(), "w")) == nullptr) {
+            LOG_ERROR("open output file failed");
+        }
+        fprintf(fp, "Elapsed time: %lld ms\n", duration.count());
+        auto h_dists = dists.to<arch_t::cpu>();
+        for (vid_t i = 0; i < h_dists.size(); ++i) {
+            fprintf(fp, "%u-%f\n", i, h_dists[i]);
+        }
+        fclose(fp);
     }
+
     return 0;
 }
