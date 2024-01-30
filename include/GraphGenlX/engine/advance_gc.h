@@ -38,6 +38,11 @@ static void advance_engine_kernel(
     uint32_t g_tid = tparams::global_tid();
     uint32_t tid = tparams::thread_id();
   
+    /// 0. reset output_size to 0
+    if (g_tid == 0) {
+        *output_size = 0;
+    }
+
     /// 1. Load input data to shared/register memory.
     __shared__ vertex_t vertices[tparams::block_size];  // 结点
     __shared__ edge_t degrees[tparams::block_size]; // 结点度数前缀和
@@ -159,17 +164,19 @@ public:
     using dstatus_t = typename base_t::dstatus_type;
     using vertex_t = typename graph_t::vertex_type;
     using edge_t = typename graph_t::edge_type;
+    using index_t = typename frontier_t::index_type;
 
     constexpr static arch_t arch = graph_t::arch_value;
 
     static_assert(frontier_t::kind == SPARSE_BASED);
 
-    using base_t::BaseEngine;
-
+    AdvanceGC(comp_t &comp, frontier_t& frontier)
+        : base_t(comp, frontier), temp_buf_(1) {}
+    
     void Forward() override {
         // nvtx3::scoped_range r{"Forward"};
         ResizeOuput();
-        advance_engine(this->graph_, this->d_status_, this->frontier_);
+        advance_engine(this->graph_, this->d_status_, this->frontier_, temp_buf_);
         filter_engine(this->graph_, this->d_status_, this->frontier_);
     }
 
@@ -234,7 +241,8 @@ public:
 
 protected:
     static void 
-    advance_engine(const graph_t &graph, dstatus_t &d_status, frontier_t &frontier) {
+    advance_engine(const graph_t &graph, dstatus_t &d_status, frontier_t &frontier,
+                  Buffer<arch, index_t>& output_size) {
         // nvtx3::scoped_range r{"advance_engine"};
 
         using tparams = archi::LaunchTparams<arch>;
@@ -243,7 +251,6 @@ protected:
                                                       dstatus_t, 
                                                       typename frontier_t::arch_ref_t>;
 
-        Buffer<arch, typename frontier_t::index_type> output_size(1);
         checkCudaErrors((archi::LaunchKernel<arch, tparams>(
             {frontier.input_size()}, 
             kernel, 
@@ -267,6 +274,8 @@ protected:
         constexpr static bool value = 
             std::is_same<std::true_type, decltype(test<functor_t>(0))>::value;
     };
+
+    Buffer<arch, index_t> temp_buf_;
 };
 
 } // namespce engine
