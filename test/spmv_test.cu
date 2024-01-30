@@ -87,7 +87,7 @@ using spmv_t =
 int main() {
     LoadEdgeOpts opts;
     opts.is_directed = true;
-    auto csr = Loader<vstart_t::FROM_0_TO_0, false>()
+    auto csr = Loader<vstart_t::FROM_0_TO_0>()
                 .LoadEdgesFromTxt<dist_t>("../datasets/sample/sample.adj", opts)
                 .ToCsr<arch>();
     vector<dist_t> h_x(csr.n_cols, kMaxDist);

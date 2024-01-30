@@ -81,23 +81,20 @@ struct SSSPFunctor : BlasFunctor<vid_t, dist_t, sssp_dstatus_t, dist_t, dist_t> 
 
 };
 
-int main(int argc, char *argv[]) {
-    if (argc < 3) {
-        printx("Usage: ", argv[0], " <graph_file> <src_vertex> [output_path]");
-        return -1;
-    }
-    string graph_file = argv[1];
-    vid_t src = std::stoi(argv[2]);
-    string output_path;
-    if (argc == 4) {
-        output_path = argv[3];
-    }
 
-    Loader<vstart_t::FROM_1_TO_1, false> loader;
+int main(int argc, char *argv[]) {
+    CLI::App app;
+    string input_graph;
+    string output_path;
+    bool reoreder_vid = false;
     LoadEdgeOpts opts;
-    opts.comment_prefix = "%";
-    // opts.is_directed = true;
-    auto cache = loader.LoadEdgesFromTxt<dist_t>(graph_file, opts);
+    add_common_args(app, input_graph, output_path, reoreder_vid, opts);
+    vid_t src;
+    app.add_option("--src", src, "source vertex in SSSP")->required();
+    CLI11_PARSE(app, argc, argv);
+
+    Loader<vstart_t::FROM_1_TO_1> loader;
+    auto cache = loader.LoadEdgesFromTxt<dist_t>(input_graph, opts);
     auto g = graph::build<arch_t::cuda, BlasViews>(cache);
     using graph_t = decltype(g);
 

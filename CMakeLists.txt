@@ -41,10 +41,12 @@ set(CMAKE_CUDA_FLAGS_RELEASE "${CMAKE_CUDA_FLAGS_RELEASE} --use_fast_math")
 #     INTERFACE ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
 # )
 
-include_directories(include ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+include_directories(third_party/CLI11)
 add_subdirectory(third_party/nvtx3)
 
-macro (add_cuda_exec exec_name exec_file)
+include_directories(include ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+
+function (add_cuda_exec exec_name exec_file)
     # GPU代码
     add_executable(${exec_name} ${exec_file})
     # target_link_libraries(${exec_name} PRIVATE graph_genlx)
@@ -54,7 +56,7 @@ macro (add_cuda_exec exec_name exec_file)
         CUDA_SEPARABLE_COMPILATION ON
     )
     target_link_libraries(${exec_name} PRIVATE nvtx3-cpp)
-endmacro (add_cuda_exec)
+endfunction (add_cuda_exec)
 
 add_subdirectory(apps)
 add_subdirectory(test)

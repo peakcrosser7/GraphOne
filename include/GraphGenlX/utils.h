@@ -4,3 +4,4 @@
 #include "GraphGenlX/utils/log.hpp"
 #include "GraphGenlX/utils/string.hpp"
 #include "GraphGenlX/utils/string_arch.h"
+#include "GraphGenlX/utils/cli.hpp"

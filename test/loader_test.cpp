@@ -7,7 +7,7 @@ using namespace std;
 using namespace graph_genlx;
 
 int main() {
-    Loader<vstart_t::FROM_1_TO_1, true> loader;
+    Loader<vstart_t::FROM_1_TO_1> loader(true);
     LoadEdgeOpts opts;
     opts.is_directed = true;
     auto edges = loader.LoadEdgesFromTxt<int>("../datasets/sample/sample.adj", opts);

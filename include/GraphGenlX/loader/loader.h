@@ -11,44 +11,19 @@
 #include "GraphGenlX/type.hpp"
 #include "GraphGenlX/utils/string.hpp"
 #include "GraphGenlX/utils/log.hpp"
+#include "GraphGenlX/loader/opts.hpp"
 #include "GraphGenlX/loader/edge_cache.h"
 #include "GraphGenlX/vec/dense.h"
 
 namespace graph_genlx {
 
-struct LoadEdgeOpts {
-    /// @brief 文件后缀名
-    std::string file_ext = ".adj";
-    /// @brief 文件注释行前缀
-    std::string comment_prefix = "#";
-    /// @brief 数据分隔符
-    std::string line_sep = " ";
-
-    /// @brief 是否是有向图,默认无向图
-    bool is_directed = false;
-    /// @brief 是否保留自环边,默认不保留
-    bool keep_self_loop = false;
-    /// @brief 是否保留重边,默认不保留
-    bool keep_duplicate_edges = false;
-};
-
-struct LoadVertexOpts {
-    /// @brief 文件注释行前缀
-    std::string comment_prefix = "#";
-
-    /// @brief 结点分隔符
-    std::string vertex_sep = " ";
-    /// @brief 结点属性数据分隔符
-    std::string vdata_sep = " ";
-};
-
 template <vstart_t v_start = vstart_t::FROM_0_TO_0,
-          bool reorder_vid = true, 
           typename index_t = vid_t,
           typename offset_t = eid_t>
 class Loader {
   public:
-    Loader() {
+    Loader(bool reorder_vid = false) 
+    : reorder_vid_(reorder_vid), new_vid_(0), vid_map_() {
         if constexpr (v_start != vstart_t::FROM_0_TO_0) {
             new_vid_ = 1;
         }
@@ -178,7 +153,7 @@ class Loader {
                 continue;
             }
             auto vertex = index_t(std::strtoul(pToken, nullptr, 10));
-            if constexpr (reorder_vid) {
+            if (reorder_vid_) {
                 vertex = ReorderVid_(vertex);
             }
 
@@ -242,7 +217,7 @@ class Loader {
 
     /// @return wether find the vertex and reoreder
     bool ReorderedVid(index_t& vid) const {
-        if constexpr (reorder_vid == false) {
+        if (reorder_vid_ == false) {
             return true;
         }
         auto it = vid_map_.find(vid);
@@ -280,7 +255,7 @@ protected:
             return false;
         }
 
-        if constexpr (reorder_vid == true) {
+        if (reorder_vid_ == true) {
             edge.src = ReorderVid_(edge.src);
             edge.dst = ReorderVid_(edge.dst);
         }
@@ -306,13 +281,13 @@ protected:
         }
     }
 
-    // /// 是否对结点重排序,默认重排
-    // bool reorder_vid_{true};
     // /// 结点ID从0起始转换为从1起始,默认不是(即0到0或1到1,无需额外调整)
-    // vstart_t vid_start_{vstart_t::FROM_0_TO_0};
+    // vstart_t vid_start_;
 
-    index_t new_vid_{0};
-    std::unordered_map<index_t, index_t> vid_map_{};
+    /// 是否对结点重排序,默认重排
+    bool reorder_vid_;
+    index_t new_vid_;
+    std::unordered_map<index_t, index_t> vid_map_;
 };
 
 } // namespace graph_genlx
