@@ -2,18 +2,18 @@
 #include <limits>
 #include <vector>
 
-#include "GraphGenlX/base/buffer.h"
-#include "GraphGenlX/loader/loader.h"
-#include "GraphGenlX/mat/convert.h"
-#include "GraphGenlX/archi/blas/SpMV/spmv.h"
-#include "GraphGenlX/archi/thrust/thrust.h"
-#include "GraphGenlX/utils.h"
+#include "GraphOne/base/buffer.h"
+#include "GraphOne/loader/loader.h"
+#include "GraphOne/mat/convert.h"
+#include "GraphOne/archi/blas/SpMV/spmv.h"
+#include "GraphOne/archi/thrust/thrust.h"
+#include "GraphOne/utils.h"
 
 #include "test.hpp"
 
 
 using namespace std;
-using namespace graph_genlx;
+using namespace graph_one;
 
 constexpr arch_t arch = arch_t::cuda;
 using dist_t = int;
@@ -26,30 +26,30 @@ struct SSSPFunctor {
         // return 0;
     }
 
-    __GENLX_ARCH_INL__
+    __ONE_ARCH_INL__
     static dist_t default_result() {
         return kMaxDist;
         // return 0;
     }
 
-    // __GENLX_DEV_INL__
+    // __ONE_DEV_INL__
     // static dist_t construct(const vid_t& vid, const sssp_dstatus_t& d_status) {
     //     return d_status.dists[vid];
     // }
 
-    __GENLX_DEV_INL__
+    __ONE_DEV_INL__
     static dist_t gather(const dist_t& weight, const dist_t& info) {
         return (info == kMaxDist) ? info : weight + info;
         // return weight * info;
     }
 
-    __GENLX_DEV_INL__
+    __ONE_DEV_INL__
     static dist_t reduce(const dist_t& lhs, const dist_t& rhs) {
         return std::min(lhs, rhs);
         // return lhs + rhs;
     }
 
-    // __GENLX_DEV_INL__
+    // __ONE_DEV_INL__
     // static bool apply(const vid_t& vid, const dist_t& res, sssp_dstatus_t& d_status) {
     //     if (res < d_status.dists[vid]) {
     //         d_status.dists[vid] = res;
@@ -63,17 +63,17 @@ struct SSSPFunctor {
 struct SpmvFunctor {
     using functor_t = SSSPFunctor;
 
-    __GENLX_DEV_INL__
+    __ONE_DEV_INL__
     static dist_t initialize() {
         return functor_t::default_result();
     }
 
-    __GENLX_DEV_INL__
+    __ONE_DEV_INL__
     static dist_t combine(const dist_t& nonzero, const dist_t& x) {
         return functor_t::gather(nonzero, x);
     }
 
-    __GENLX_DEV_INL__
+    __ONE_DEV_INL__
     static dist_t reduce(const dist_t& lhs, const dist_t& rhs) {
         return functor_t::reduce(lhs, rhs);
     }

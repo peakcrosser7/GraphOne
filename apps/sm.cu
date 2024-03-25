@@ -1,10 +1,10 @@
 
 #include <iostream>
 
-#include "GraphGenlX/graph_genlx.h"
+#include "GraphOne/graph_one.h"
 
 using namespace std;
-using namespace graph_genlx;
+using namespace graph_one;
 
 int main(int argc, char *argv[]) {
     if (argc < 3) {

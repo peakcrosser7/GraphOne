@@ -1,17 +1,17 @@
 #include "test.hpp"
 
-#include "GraphGenlX/graph_genlx.h"
-#include "GraphGenlX/archi/thrust/thrust.h"
+#include "GraphOne/graph_one.h"
+#include "GraphOne/archi/thrust/thrust.h"
 
 using namespace std;
-using namespace graph_genlx;
+using namespace graph_one;
 
 int main() {
     constexpr arch_t arch = arch_t::cuda;
     int sz = 10;
     Buffer<arch, int> output(sz);
 
-    auto bypass = [] __GENLX_DEV__ (const int& i) {
+    auto bypass = [] __ONE_DEV__ (const int& i) {
         return -i;
     };
 

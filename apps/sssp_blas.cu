@@ -4,10 +4,10 @@
 #include <limits>
 #include <chrono>
 
-#include "GraphGenlX/graph_genlx.h"
+#include "GraphOne/graph_one.h"
 
 using namespace std;
-using namespace graph_genlx;
+using namespace graph_one;
 
 constexpr arch_t arch = arch_t::cuda;
 using dist_t = float;
@@ -50,27 +50,27 @@ struct SSSPFunctor : BlasFunctor<vid_t, dist_t, sssp_dstatus_t, dist_t, dist_t> 
         return kMaxDist;
     }
 
-    __GENLX_ARCH_INL__
+    __ONE_ARCH_INL__
     static dist_t default_result() {
         return kMaxDist;
     }
 
-    __GENLX_DEV_INL__
+    __ONE_DEV_INL__
     static dist_t construct(const vid_t& vid, const sssp_dstatus_t& d_status) {
         return d_status.dists[vid];
     }
 
-    __GENLX_DEV_INL__
+    __ONE_DEV_INL__
     static dist_t gather(const dist_t& weight, const dist_t& info) {
         return (info == kMaxDist) ? info : weight + info;
     }
 
-    __GENLX_DEV_INL__
+    __ONE_DEV_INL__
     static dist_t reduce(const dist_t& lhs, const dist_t& rhs) {
         return std::min(lhs, rhs);
     }
 
-    __GENLX_DEV_INL__
+    __ONE_DEV_INL__
     static bool apply(const vid_t& vid, const dist_t& res, sssp_dstatus_t& d_status) {
         if (res < d_status.dists[vid]) {
             d_status.dists[vid] = res;

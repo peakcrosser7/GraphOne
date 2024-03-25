@@ -1,9 +1,9 @@
-#include "GraphGenlX/base/buffer.h"
+#include "GraphOne/base/buffer.h"
 
 #include "test.hpp"
 
 using namespace std;
-using namespace graph_genlx;
+using namespace graph_one;
 
 template<typename T>
 __global__ void print(T* arr, int size) {

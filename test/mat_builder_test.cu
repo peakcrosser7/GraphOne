@@ -1,10 +1,10 @@
-#include "GraphGenlX/loader/loader.h"
-#include "GraphGenlX/mat/convert.h"
+#include "GraphOne/loader/loader.h"
+#include "GraphOne/mat/convert.h"
 
 #include "test.hpp"
 
 using namespace std;
-using namespace graph_genlx;
+using namespace graph_one;
 
 int main() {
     auto csr = Loader<>()

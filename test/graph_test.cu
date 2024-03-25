@@ -1,13 +1,13 @@
-#include "GraphGenlX/loader/loader.h"
-#include "GraphGenlX/vec/dense.h"
-#include "GraphGenlX/mat/dense.h"
-#include "GraphGenlX/graph/builder.h"
-#include "GraphGenlX/domain.h"
+#include "GraphOne/loader/loader.h"
+#include "GraphOne/vec/dense.h"
+#include "GraphOne/mat/dense.h"
+#include "GraphOne/graph/builder.h"
+#include "GraphOne/domain.h"
 
 #include "test.hpp"
 
 using namespace std;
-using namespace graph_genlx;
+using namespace graph_one;
 
 int main () {
     // install_oneshot_signal_handlers();

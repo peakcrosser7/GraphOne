@@ -4,10 +4,10 @@
 #include <limits>
 #include <chrono>
 
-#include "GraphGenlX/graph_genlx.h"
+#include "GraphOne/graph_one.h"
 
 using namespace std;
-using namespace graph_genlx;
+using namespace graph_one;
 
 constexpr arch_t arch = arch_t::cuda;
 using dist_t = float;
@@ -46,7 +46,7 @@ struct SSSPComp : ComponentX<graph_t, sssp_hstatus_t, sssp_dstatus_t> {
 };
 
 struct SSSPFunctor : AdvanceFunctor<vid_t, eid_t, dist_t, sssp_dstatus_t> {
-    __GENLX_DEV_INL__
+    __ONE_DEV_INL__
     static bool advance(const vid_t &src, const vid_t &dst, const eid_t &edge,
                         const dist_t &weight, sssp_dstatus_t &d_status) {
         auto* const dists = d_status.dists;
@@ -61,7 +61,7 @@ struct SSSPFunctor : AdvanceFunctor<vid_t, eid_t, dist_t, sssp_dstatus_t> {
         return dist_to_dst < recover_dist;
     }
 
-    __GENLX_DEV_INL__
+    __ONE_DEV_INL__
     static bool filter(const vid_t& vid, const sssp_dstatus_t& d_status) {
         auto& visited = d_status.visited;
         auto& iter = d_status.iter;

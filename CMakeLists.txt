@@ -31,12 +31,12 @@ set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --extended-lambda --expt-relaxed-const
 set(CMAKE_CUDA_FLAGS_DEBUG "${CMAKE_CUDA_FLAGS_DEBUG} --debug --device-debug")
 set(CMAKE_CUDA_FLAGS_RELEASE "${CMAKE_CUDA_FLAGS_RELEASE} --use_fast_math")
 
-# add_library(graph_genlx INTERFACE)
-# set_target_properties(graph_genlx PROPERTIES
+# add_library(graph_one INTERFACE)
+# set_target_properties(graph_one PROPERTIES
 #     CUDA_SEPARABLE_COMPILATION ON
 #     CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES} # Set required architecture.
 # )
-# target_include_directories(graph_genlx
+# target_include_directories(graph_one
 #     INTERFACE "include"
 #     INTERFACE ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
 # )
@@ -49,7 +49,7 @@ include_directories(include ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 function (add_cuda_exec exec_name exec_file)
     # GPU代码
     add_executable(${exec_name} ${exec_file})
-    # target_link_libraries(${exec_name} PRIVATE graph_genlx)
+    # target_link_libraries(${exec_name} PRIVATE graph_one)
     set_target_properties(${exec_name} PROPERTIES 
         CUDA_RESOLVE_DEVICE_SYMBOLS ON
         CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES}

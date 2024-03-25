@@ -1,10 +1,10 @@
 #include "test.hpp"
 
-#include "GraphGenlX/loader/loader.h"
-#include "GraphGenlX/utils/string.hpp"
+#include "GraphOne/loader/loader.h"
+#include "GraphOne/utils/string.hpp"
 
 using namespace std;
-using namespace graph_genlx;
+using namespace graph_one;
 
 int main() {
     Loader<vstart_t::FROM_1_TO_1> loader(true);
