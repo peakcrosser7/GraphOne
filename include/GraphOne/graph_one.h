@@ -13,6 +13,7 @@
 #include "GraphOne/engine/blas_gc.h"
 
 #include "GraphOne/frontier/double_buffer_frontier.h"
+#include "GraphOne/frontier/dense.h"
 
 #include "GraphOne/base/run.h"
 #include "GraphOne/debug/backtrace.hpp"

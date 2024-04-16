@@ -7,6 +7,8 @@
 
 namespace graph_one::archi::cuda {
 
+constexpr unsigned kWarpFullMask = 0xffffffff;
+
 __ONE_CUDA__
 inline char* strncat(char* dest, const char* src, unsigned n) {
     int i = 0;
@@ -25,7 +27,7 @@ inline char* strncat(char* dest, const char* src, unsigned n) {
 template <typename ... Ts>
 __ONE_CUDA_INL__
 void print(const char* fmt, Ts&&... args) {
-#if defined(DEBUG_KERNEL) && defined(DEBUG_LOG)
+#if defined(DEBUG_KERNEL)
     char buf[256] = "[DEBUG-KERNEL] ";
     archi::cuda::strncat(buf, fmt, sizeof(buf) - 16);
     printf(buf, args...);
@@ -65,6 +67,35 @@ float AtomicMin<float>(float* address, float value) {
                       __float_as_int(::fminf(value, __int_as_float(expected))));
   } while (expected != old);
   return __int_as_float(old);
+}
+
+template <typename T>
+__ONE_CUDA_INL__
+T WarpReduceSum(T value) {
+    #pragma unroll
+    for (int s = 16; s > 0; s >>= 1) {
+        value += __shfl_down_sync(kWarpFullMask, value, s);
+    }
+    return value;
+}
+
+template <typename T>
+__ONE_CUDA_INL__
+T BlockReduceSum(T val, T* shared) {
+    const int tid = threadIdx.x;
+    const int lid = tid % 32;
+    const int wid = tid / 32;
+    val = WarpReduceSum(val);
+    __syncthreads();
+    if (lid == 0) {
+        shared[wid] = val;
+    }
+    __syncthreads();
+    val = (tid < blockDim.x / 32) ? shared[lid] : T(0);
+    if (wid == 0) {
+        val = WarpReduceSum(val);
+    }
+    return val;
 }
 
 } // namespace graph_one

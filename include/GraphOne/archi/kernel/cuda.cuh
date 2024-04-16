@@ -8,16 +8,20 @@
 
 namespace graph_one::archi {
 
+namespace cuda {
+
 constexpr uint32_t kBlockSize = 256;
 constexpr uint32_t kNumWaves = 32;
 
 uint32_t GetNumBlock(int64_t n) {
-    return  std::max<int>(1, (n + kBlockSize - 1) / kBlockSize);
+    return std::max<int>(1, (n + kBlockSize - 1) / kBlockSize);
+}
+
 }
 
 template <>
 struct LaunchTparams<arch_t::cuda> {
-    constexpr static uint32_t block_size = kBlockSize;
+    constexpr static uint32_t block_size = cuda::kBlockSize;
     constexpr static uint32_t warp_size = 32;
     
     __ONE_CUDA_INL__ 
@@ -45,9 +49,14 @@ struct LaunchTparams<arch_t::cuda> {
         return block_id() * block_dim() + thread_id();
     }
 
+    __ONE_DEV_INL__
+    static uint32_t grid_threads() {
+        return grid_dim() * block_dim();
+    }
+
     __ONE_CUDA_INL__ 
     static uint32_t warp_id() {
-        return (global_tid() >> 5);
+        return (thread_id() >> 5);
     }
 
     __ONE_CUDA_INL__ 
@@ -59,8 +68,10 @@ struct LaunchTparams<arch_t::cuda> {
 template <>
 struct LaunchParams<arch_t::cuda> {
 
-    LaunchParams(int64_t n, size_t smem_bytes = 0, cudaStream_t stream = 0) 
-        : grid_dim(GetNumBlock(n)), smem_bytes(smem_bytes), stream(stream) {}
+    /// @param is_grid_dim true if `n` is grid dimension, false if `n` is total threads of grids.
+    /// Default to `false`.
+    LaunchParams(int64_t n, bool is_grid_dim = false, size_t smem_bytes = 0, cudaStream_t stream = 0) 
+        : grid_dim(is_grid_dim ? n : cuda::GetNumBlock(n)), smem_bytes(smem_bytes), stream(stream) {}
 
     dim3 grid_dim;
     size_t smem_bytes;

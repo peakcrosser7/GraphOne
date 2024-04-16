@@ -18,13 +18,13 @@ struct sssp_hstatus_t {
     vid_t src_vid;
 
     DenseVec<arch, dist_t>& dists;
-    DenseVec<arch, uint32_t>& visited;
+    // DenseVec<arch, uint32_t>& visited;
 };
 
 struct sssp_dstatus_t {
     uint32_t iter;
     dist_t * dists;
-    uint32_t* visited;
+    // uint32_t* visited;
 };
 
 template <typename graph_t>
@@ -45,32 +45,43 @@ struct SSSPComp : ComponentX<graph_t, sssp_hstatus_t, sssp_dstatus_t> {
     }
 };
 
-struct SSSPFunctor : AdvanceFunctor<vid_t, eid_t, dist_t, sssp_dstatus_t> {
-    __ONE_DEV_INL__
-    static bool advance(const vid_t &src, const vid_t &dst, const eid_t &edge,
-                        const dist_t &weight, sssp_dstatus_t &d_status) {
-        auto* const dists = d_status.dists;
-        dist_t src_dist = dists[src];
-        dist_t dist_to_dst = src_dist + weight;
-        // Check if the destination node has been claimed as someone's child
-        dist_t recover_dist = archi::cuda::AtomicMin(&dists[dst], dist_to_dst);
+struct SSSPFunctor : BlasFunctor<vid_t, dist_t, sssp_dstatus_t, dist_t, dist_t> {
+    static constexpr bool sparse = true;
 
-        archi::cuda::print("tid=%u src=%u, dst=%u, e=%u, w=%d dist_to_dst=%f recover_dist=%f\n", 
-            threadIdx.x, src, dst, edge, weight, dist_to_dst, recover_dist);
-        // 距离更小则更新输出前沿
-        return dist_to_dst < recover_dist;
+    __ONE_ARCH_INL__
+    static dist_t default_info() {
+        return kMaxDist;
+    }
+
+    __ONE_ARCH_INL__
+    static dist_t default_result() {
+        return kMaxDist;
     }
 
     __ONE_DEV_INL__
-    static bool filter(const vid_t& vid, const sssp_dstatus_t& d_status) {
-        auto& visited = d_status.visited;
-        auto& iter = d_status.iter;
-        if (visited[vid] == iter) {
+    static dist_t construct(const vid_t& vid, const sssp_dstatus_t& d_status) {
+        return d_status.dists[vid];
+    }
+
+    __ONE_DEV_INL__
+    static dist_t combine(const dist_t& weight, const dist_t& info) {
+        return (info == kMaxDist) ? info : weight + info;
+    }
+
+    __ONE_DEV_INL__
+    static dist_t reduce(const dist_t& lhs, const dist_t& rhs) {
+        return std::min(lhs, rhs);
+    }
+
+    __ONE_DEV_INL__
+    static bool apply(const vid_t& vid, const dist_t& res, sssp_dstatus_t& d_status) {
+        if (res < d_status.dists[vid]) {
+            d_status.dists[vid] = res;
             return true;
         }
-        visited[vid] = iter;
         return false;
     }
+
 };
 
 
@@ -85,9 +96,9 @@ int main(int argc, char *argv[]) {
     app.add_option("--src", src, "source vertex in SSSP")->required();
     CLI11_PARSE(app, argc, argv);
 
-    Loader<vstart_t::FROM_1_TO_1> loader(reoreder_vid);
+    Loader<vstart_t::FROM_1_TO_1> loader;
     auto cache = loader.LoadEdgesFromTxt<dist_t>(input_graph, opts);
-    auto g = graph::build<arch_t::cuda, AdvanceViews>(cache);
+    auto g = graph::build<arch_t::cuda, BlasViews>(cache);
     using graph_t = decltype(g);
 
     if (!loader.ReorderedVid(src)) {
@@ -97,9 +108,9 @@ int main(int argc, char *argv[]) {
     DenseVec<arch, dist_t> dists(g.num_vertices());
     DenseVec<arch, vid_t> visited(g.num_vertices());
 
-    sssp_hstatus_t h_status{src, dists, visited};
-    sssp_dstatus_t d_status{0, dists.data(), visited.data()};
-    DblBufFrontier<arch, vid_t> frontier(g.num_vertices(), {src});
+    sssp_hstatus_t h_status{src, dists/*, visited*/};
+    sssp_dstatus_t d_status{0, dists.data()/*, visited.data()*/};
+    DenDblFrontier<arch, dist_t, vid_t> frontier(g.num_vertices(), {src});
 
     SSSPComp<graph_t> comp(g, h_status, d_status);
 
@@ -108,8 +119,8 @@ int main(int argc, char *argv[]) {
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
-    printx("Elapsed time: ", duration.count(), "ms");
-    
+    printx("Elapsed time: ", duration.count(), " ms");
+ 
     if (!output_path.empty()) {
         FILE* fp;
         if ((fp = fopen(output_path.c_str(), "w")) == nullptr) {

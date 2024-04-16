@@ -79,6 +79,7 @@ public:
 
     Buffer& operator= (Buffer&& rhs) {
         if (this != &rhs) {
+            archi::memfree<arch, value_t>(data_);
             size_ = rhs.size_;
             data_ = rhs.data_;
             rhs.size_ = 0;
@@ -147,11 +148,15 @@ public:
         return size_;
     }
 
-    void reset() {
+    bool empty() const {
+        return size_ == 0;
+    }
+
+    void resize() {
         archi::memset<arch, value_t>(data_, size_, 0);
     }
 
-    void reset(index_t size) {
+    void resize(index_t size) {
         if (size != size_) {
             archi::memfree<arch, value_t>(data_);
             data_ = archi::memalloc<arch, value_t>(size);

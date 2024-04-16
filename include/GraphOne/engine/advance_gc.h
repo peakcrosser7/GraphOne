@@ -25,7 +25,7 @@ template <typename tparams,    // should be archi::LaunchTparams<arch_t::cuda>
           typename dstatus_t, 
           typename frontier_t> 
 __ONE_CUDA_KERNEL__ 
-static void advance_engine_kernel(
+static void advance_kernel(
     const graph_t graph, dstatus_t d_status, frontier_t frontier, typename frontier_t::index_type* output_size) {
     static_assert(graph_t::arch_value == arch_t::cuda);
 
@@ -176,8 +176,8 @@ public:
     void Forward() override {
         // nvtx3::scoped_range r{"Forward"};
         ResizeOuput();
-        advance_engine(this->graph_, this->d_status_, this->frontier_, temp_buf_);
-        filter_engine(this->graph_, this->d_status_, this->frontier_);
+        Advance(this->graph_, this->d_status_, this->frontier_, temp_buf_);
+        Filter(this->graph_, this->d_status_, this->frontier_);
     }
 
     void ResizeOuput() {
@@ -206,8 +206,8 @@ public:
     }
 
     static void 
-    filter_engine(const graph_t &graph, dstatus_t &d_status, frontier_t &frontier) {
-        // nvtx3::scoped_range r{"filter_engine"};
+    Filter(const graph_t &graph, dstatus_t &d_status, frontier_t &frontier) {
+        // nvtx3::scoped_range r{"Filter"};
 
         if constexpr (!frontier_t::has_output || !HasFilter::value) {
             return;
@@ -241,17 +241,17 @@ public:
 
 protected:
     static void 
-    advance_engine(const graph_t &graph, dstatus_t &d_status, frontier_t &frontier,
+    Advance(const graph_t &graph, dstatus_t &d_status, frontier_t &frontier,
                   Buffer<arch, index_t>& output_size) {
-        // nvtx3::scoped_range r{"advance_engine"};
+        // nvtx3::scoped_range r{"Advance"};
 
         using tparams = archi::LaunchTparams<arch>;
-        constexpr auto kernel = advance_engine_kernel<tparams, functor_t,
+        constexpr auto kernel = advance_kernel<tparams, functor_t,
                                                       typename graph_t::arch_ref_t,
                                                       dstatus_t, 
                                                       typename frontier_t::arch_ref_t>;
 
-        checkCudaErrors((archi::LaunchKernel<arch, tparams>(
+        checkArchErrors(arch, (archi::LaunchKernel<arch, tparams>(
             {frontier.input_size()}, 
             kernel, 
             graph.ToArch(), 
