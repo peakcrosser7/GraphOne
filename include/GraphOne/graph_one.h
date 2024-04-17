@@ -12,8 +12,8 @@
 #include "GraphOne/engine/advance_gc.h"
 #include "GraphOne/engine/blas_gc.h"
 
-#include "GraphOne/frontier/double_buffer_frontier.h"
-#include "GraphOne/frontier/dense.h"
+#include "GraphOne/frontier/sparse_dbl.h"
+#include "GraphOne/frontier/dense_dbl.h"
 
 #include "GraphOne/base/run.h"
 #include "GraphOne/debug/backtrace.hpp"

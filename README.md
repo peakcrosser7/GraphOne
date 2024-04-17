@@ -56,6 +56,8 @@ struct SSSPComp : ComponentX<graph_t, sssp_hstatus_t, sssp_dstatus_t> {
 Second, choose an appropriate algorithm execution engine and implement corresponding funtors.
 ```cpp
 struct SSSPFunctor : BlasFunctor<vid_t, dist_t, sssp_dstatus_t, dist_t, dist_t> {
+
+    __ONE_ARCH_INL__
     static dist_t default_info() {
         return kMaxDist;
     }
@@ -71,7 +73,7 @@ struct SSSPFunctor : BlasFunctor<vid_t, dist_t, sssp_dstatus_t, dist_t, dist_t> 
     }
 
     __ONE_DEV_INL__
-    static dist_t gather(const dist_t& weight, const dist_t& info) {
+    static dist_t combine(const dist_t& weight, const dist_t& info) {
         return (info == kMaxDist) ? info : weight + info;
     }
 
@@ -97,7 +99,7 @@ DenseVec<arch, vid_t> visited(g.num_vertices());
 
 sssp_hstatus_t h_status{src, dists};
 sssp_dstatus_t d_status{0, dists.data()};
-DblBufFrontier<arch, vid_t> frontier(g.num_vertices(), src);
+DblBufFrontier<arch, vid_t> frontier(g.num_vertices(), {src});
 
 SSSPComp<graph_t> comp(g, h_status, d_status);
 

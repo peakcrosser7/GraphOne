@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
 
     sssp_hstatus_t h_status{src, dists, visited};
     sssp_dstatus_t d_status{0, dists.data(), visited.data()};
-    DblBufFrontier<arch, vid_t> frontier(g.num_vertices(), {src});
+    SpDblFrontier<arch, vid_t> frontier(g.num_vertices(), {src});
 
     SSSPComp<graph_t> comp(g, h_status, d_status);
 

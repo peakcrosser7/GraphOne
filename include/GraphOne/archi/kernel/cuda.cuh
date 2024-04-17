@@ -68,10 +68,10 @@ struct LaunchTparams<arch_t::cuda> {
 template <>
 struct LaunchParams<arch_t::cuda> {
 
-    /// @param is_grid_dim true if `n` is grid dimension, false if `n` is total threads of grids.
-    /// Default to `false`.
-    LaunchParams(int64_t n, bool is_grid_dim = false, size_t smem_bytes = 0, cudaStream_t stream = 0) 
-        : grid_dim(is_grid_dim ? n : cuda::GetNumBlock(n)), smem_bytes(smem_bytes), stream(stream) {}
+    /// @param is_num_blocks true if `n` is the number of thread blocks, i.e. grid dimension,
+    /// false if `n` is total threads of grids. Default to `false`.
+    LaunchParams(int64_t n, bool is_num_blocks = false, size_t smem_bytes = 0, cudaStream_t stream = 0) 
+        : grid_dim(is_num_blocks ? n : cuda::GetNumBlock(n)), smem_bytes(smem_bytes), stream(stream) {}
 
     dim3 grid_dim;
     size_t smem_bytes;

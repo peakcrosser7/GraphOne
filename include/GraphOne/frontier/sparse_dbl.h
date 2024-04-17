@@ -13,46 +13,46 @@
 namespace graph_one {
 
 template <arch_t arch,
-          typename value_t,
-          typename index_t = value_t>
-class DblBufFrontier : public BaseFrontier<SPARSE_BASED, true> {
+          typename vertex_t,
+          typename index_t = vertex_t>
+class SpDblFrontier : public BaseFrontier<SPARSE_BASED, true> {
 public:
-    using value_type = value_t;
+    using vertex_type = vertex_t;
     using index_type = index_t;
 
     struct arch_ref_t {
-        constexpr static bool has_output = DblBufFrontier::has_output;
-        using value_type = value_t;
+        constexpr static bool has_output = SpDblFrontier::has_output;
+        using vertex_type = vertex_t;
         using index_type = index_t;
 
         __ONE_DEV_INL__
-        value_t get(index_t i) const {
+        vertex_t get(index_t i) const {
             return frontiers[input_selector][i];
         }
 
         __ONE_DEV_INL__
-        void set(index_t i, value_t v) {
+        void set(index_t i, vertex_t v) {
             frontiers[input_selector^1][i] = v;
         }
 
         __ONE_DEV_INL__
-        const value_t* input() const {
+        const vertex_t* input() const {
             return frontiers[input_selector];
         }
 
         __ONE_DEV_INL__
-        value_t* ouput() {
+        vertex_t* ouput() {
             return frontiers[input_selector^1];
         }
 
         int input_selector;
         index_t input_size;
         index_t output_size;
-        value_t* frontiers[2];
+        vertex_t* frontiers[2];
     };
 
 
-    DblBufFrontier(index_t size, std::initializer_list<value_t> vids)
+    SpDblFrontier(index_t size, std::initializer_list<vertex_t> vids)
     : input_selector_(0), in_size_(0), out_size_(0), frontiers_() {
         index_t sz = vids.size();
         index_t max_sz = std::max(size, sz);
@@ -103,11 +103,11 @@ public:
         std::swap(in_size_, out_size_);
     }
 
-    const Buffer<arch, value_t, index_t>& input() const {
+    const Buffer<arch, vertex_t, index_t>& input() const {
         return frontiers_[input_selector_];
     }
 
-    Buffer<arch, value_t, index_t>& output() {
+    Buffer<arch, vertex_t, index_t>& output() {
         return frontiers_[input_selector_^1];
     }
 
@@ -124,7 +124,7 @@ public:
 
     std::string ToString() const {
         std::string str;
-        str += "DblBufFrontier{ ";
+        str += "SpDblFrontier{ ";
         str += "input_selector_:" + utils::NumToString(input_selector_) + ", ";
         str += "in_size_:" + utils::NumToString(in_size_) + ", ";
         str += "out_size_:" + utils::NumToString(out_size_) + ", ";
@@ -147,21 +147,21 @@ public:
 
 private:
     static std::string 
-    BufferToString_(const Buffer<arch, value_t, index_t>& frontier, index_t size) {
+    BufferToString_(const Buffer<arch, vertex_t, index_t>& frontier, index_t size) {
         size = std::min(size, frontier.size());
         std::string str("[");
         if constexpr (arch != arch_t::cpu) {
-            value_t* h_data = archi::memalloc<arch_t::cpu, value_t>(size);
-            archi::memcpy<arch_t::cpu, arch, value_t>(h_data, frontier.data(), size);
+            vertex_t* h_data = archi::memalloc<arch_t::cpu, vertex_t>(size);
+            archi::memcpy<arch_t::cpu, arch, vertex_t>(h_data, frontier.data(), size);
             for (index_t i = 0; i < size; ++i) {
                 str += utils::NumToString(h_data[i]);
                 if (i < size - 1) {
                     str += ",";
                 }
             }
-            archi::memfree<arch_t::cpu, value_t>(h_data);
+            archi::memfree<arch_t::cpu, vertex_t>(h_data);
         } else {
-            const value_t* h_data = frontier.data();
+            const vertex_t* h_data = frontier.data();
             for (index_t i = 0; i < size; ++i) {
                 str += utils::NumToString(h_data[i]);
                 if (i < size - 1) {
@@ -177,7 +177,7 @@ protected:
     int input_selector_;
     index_t in_size_;
     index_t out_size_;
-    Buffer<arch, value_t, index_t> frontiers_[2];
+    Buffer<arch, vertex_t, index_t> frontiers_[2];
 };
     
 } // namespace graph_one
