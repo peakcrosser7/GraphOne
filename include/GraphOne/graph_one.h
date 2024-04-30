@@ -5,7 +5,7 @@
 #include "GraphOne/archi.h"
 #include "GraphOne/domain.h"
 
-#include "GraphOne/loader/loader.h"
+#include "GraphOne/loader/graph_loader.h"
 #include "GraphOne/graph/builder.h"
 #include "GraphOne/base/component.h"
 

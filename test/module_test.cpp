@@ -33,7 +33,7 @@ public:
     LinearImpl(int indim, int outdim)
      : Module(), 
        weight(register_parameter(NAME_OF(weight), gnn::tensor_t<arch>(indim, outdim))),
-       bias(register_parameter(NAME_OF(bias), gnn::tensor_t<arch>(1, outdim))),
+       bias(register_parameter(NAME_OF(bias), nullptr /*gnn::tensor_t<arch>(1, outdim))*/)),
        den_layer(register_module(NAME_OF(den_layer), Dense(4))) {} 
 
 
@@ -45,7 +45,7 @@ public:
 GRAPH_MODULE(Linear);
 
 int main() {
-    Linear model(5, 3);
+    auto model = Linear(5, 3);
 
     auto dict = model->named_parameters();
     for (auto& [k, v]: dict) {

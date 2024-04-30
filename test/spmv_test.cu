@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "GraphOne/base/buffer.h"
-#include "GraphOne/loader/loader.h"
+#include "GraphOne/loader/graph_loader.h"
 #include "GraphOne/mat/convert.h"
 #include "GraphOne/archi/blas/SpMV/spmv.h"
 #include "GraphOne/archi/thrust/thrust.h"
@@ -87,7 +87,7 @@ using spmv_t =
 int main() {
     LoadEdgeOpts opts;
     opts.is_directed = true;
-    auto csr = Loader<vstart_t::FROM_0_TO_0>()
+    auto csr = GraphLoader<vstart_t::FROM_0_TO_0>()
                 .LoadEdgesFromTxt<dist_t>("../datasets/sample/sample.adj", opts)
                 .ToCsr<arch>();
     vector<dist_t> h_x(csr.n_cols, kMaxDist);

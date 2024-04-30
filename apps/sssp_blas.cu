@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
     app.add_option("--src", src, "source vertex in SSSP")->required();
     CLI11_PARSE(app, argc, argv);
 
-    Loader<vstart_t::FROM_1_TO_1> loader;
+    GraphLoader<vstart_t::FROM_1_TO_1> loader;
     auto cache = loader.LoadEdgesFromTxt<dist_t>(input_graph, opts);
     auto g = graph::build<arch_t::cuda, BlasViews>(cache);
     using graph_t = decltype(g);

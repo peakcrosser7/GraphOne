@@ -2,6 +2,7 @@
 
 #include <string>
 #include <memory>
+#include <vector>
 #include <optional>
 #include <unordered_map>
 
@@ -35,7 +36,10 @@ public:
             LOG_ERROR("Submodule name must not be empty");
         }
         if (name.find('.') != std::string::npos) {
-            LOG_ERROR("Submodule name must not contain a dot (got '", name,"')");
+            LOG_ERROR("Submodule name must not contain a dot (got '", name, "')");
+        }
+        if (children_.count(name) != 0) {
+            LOG_ERROR("Submodule name must not be defined (got '", name, "')");
         }
         auto [it, _] = children_.emplace(std::move(name), std::move(module.ptr()));
         return std::dynamic_pointer_cast<module_t>(it->second);        
@@ -48,8 +52,25 @@ public:
         if (name.find('.') != std::string::npos) {
             LOG_ERROR("Parameter name must not contain a dot (got '", name,"')");
         }
+        if (parameters_.count(name) != 0) {
+            LOG_ERROR("Parameter name must not be defined (got '", name, "')");
+        }
         auto [it, _] = parameters_.emplace(std::move(name), 
             param_spec_t(new tensor_t<arch, value_t>(std::move(param))));
+        return it->second;
+    }
+
+    param_spec_t register_parameter(std::string name, std::nullptr_t) {
+        if (name.empty()) {
+            LOG_ERROR("Parameter name must not be empty");
+        }
+        if (name.find('.') != std::string::npos) {
+            LOG_ERROR("Parameter name must not contain a dot (got '", name,"')");
+        }
+        if (parameters_.count(name) != 0) {
+            LOG_ERROR("Parameter name must not be defined (got '", name, "')");
+        }
+        auto [it, _] = parameters_.emplace(std::move(name), param_spec_t());
         return it->second;
     }
 
@@ -60,21 +81,95 @@ public:
         return result;
     }
 
+    std::pair<std::vector<std::string>, std::vector<std::string>>
+    load_state_dict(std::unordered_map<std::string, param_spec_t>&& state_dict, 
+        bool strict = true) {
+        
+        std::unordered_map<std::string, param_spec_t> param_dict =
+            named_parameters();  
+
+        auto ret = load_state_dict_check_(param_dict, state_dict, strict);      
+
+        for (auto& [name, param]: param_dict) {
+            if (auto it = state_dict.find(name); it != state_dict.end()) {
+                if (param->n_rows != it->second->n_rows 
+                    || param->n_cols != it->second->n_cols) {
+                    LOG_ERROR("shape of state `", name, "` is not matched, need (",
+                        param->n_rows, ",", param->n_cols, "), but got (",
+                        it->second->n_rows, ",", it->second->n_cols, ")");
+                }
+                *param = std::move(*(it->second));
+            }
+        } 
+        return ret;
+    }
+
+    std::pair<std::vector<std::string>, std::vector<std::string>>
+    load_state_dict(const std::unordered_map<std::string, param_spec_t>& state_dict, 
+        bool strict = true) {
+        
+        std::unordered_map<std::string, param_spec_t> param_dict =
+            named_parameters();  
+
+        auto ret = load_state_dict_check_(param_dict, state_dict, strict);      
+
+        for (auto& [name, param]: param_dict) {
+            if (auto it = state_dict.find(name); it != state_dict.end()) {
+                if (param->n_rows != it->second->n_rows 
+                    || param->n_cols != it->second->n_cols) {
+                    LOG_ERROR("shape of state `", name, "` is not matched, need (",
+                        param->n_rows, ",", param->n_cols, "), but got (",
+                        it->second->n_rows, ",", it->second->n_cols, ")");
+                }
+                *param = *(it->second);
+            }
+        }
+        return ret;
+    }
 
     std::string ToString() const {
         return "Module { " + name_ + " }";
     }
 
 private:
+    std::pair<std::vector<std::string>, std::vector<std::string>>
+    load_state_dict_check_(
+        const std::unordered_map<std::string, param_spec_t>& param_dict,
+        const std::unordered_map<std::string, param_spec_t>& state_dict, 
+        bool strict) {
+
+        std::vector<std::string> missing_keys, unexpected_keys;
+        for (const auto& [name, _]: param_dict) {
+            if (state_dict.count(name) == 0) {
+                missing_keys.push_back(name);
+            }
+        }
+        for (const auto& [name, _]: state_dict) {
+            if (param_dict.count(name) == 0) {
+                unexpected_keys.push_back(name);
+            }
+        }
+        if (strict && (!missing_keys.empty() || !unexpected_keys.empty())) {
+            LOG_ERROR("load_state_dict() failed. "
+                "missing_keys:", utils::VecToString(missing_keys), ", "
+                "unexpected_keys:", utils::VecToString(unexpected_keys));
+        }
+        return std::make_pair(std::move(missing_keys), std::move(unexpected_keys));
+    }
+
     void named_parameters_(bool recurse, std::string prefix,
         std::unordered_map<std::string, param_spec_t>& result
     ) const {
         for (auto& [name, param]: parameters_) {
-            result.emplace(prefix + name, param);
+            if (param) {
+                result.emplace(prefix + name, param);
+            }    
         }
         if (recurse) {
             for (auto& [name, module]: children_) {
-                module->named_parameters_(recurse, prefix + name + ".", result);
+                if (module) {
+                    module->named_parameters_(recurse, prefix + name + ".", result);
+                }
             }
         }
     }

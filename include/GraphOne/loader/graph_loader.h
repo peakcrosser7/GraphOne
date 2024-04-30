@@ -20,9 +20,9 @@ namespace graph_one {
 template <vstart_t v_start = vstart_t::FROM_0_TO_0,
           typename index_t = vid_t,
           typename offset_t = eid_t>
-class Loader {
+class GraphLoader {
   public:
-    Loader(bool reorder_vid = false) 
+    GraphLoader(bool reorder_vid = false) 
     : reorder_vid_(reorder_vid), new_vid_(0), vid_map_() {
         if constexpr (v_start != vstart_t::FROM_0_TO_0) {
             new_vid_ = 1;

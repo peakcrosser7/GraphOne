@@ -4,6 +4,9 @@ project(GraphOne CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 17)
 
+include(FindProtobuf)
+find_package(Protobuf REQUIRED)
+
 # # 库输出路径
 # set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 # # 可执行文件输出路径
@@ -41,10 +44,14 @@ set(CMAKE_CUDA_FLAGS_RELEASE "${CMAKE_CUDA_FLAGS_RELEASE} --use_fast_math")
 #     INTERFACE ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
 # )
 
-include_directories(third_party/CLI11)
-add_subdirectory(third_party/nvtx3)
+include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+include_directories(${Protobuf_INCLUDE_DIRS})
 
-include_directories(include ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+add_subdirectory(third_party/nvtx3)
+add_subdirectory(third_party/onnx)
+
+include_directories(third_party)
+include_directories(include)
 
 function (add_cuda_exec exec_name exec_file)
     # GPU代码
@@ -60,5 +67,3 @@ endfunction (add_cuda_exec)
 
 add_subdirectory(apps)
 add_subdirectory(test)
-
-

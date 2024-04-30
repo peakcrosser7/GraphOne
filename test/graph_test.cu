@@ -1,4 +1,4 @@
-#include "GraphOne/loader/loader.h"
+#include "GraphOne/loader/graph_loader.h"
 #include "GraphOne/vec/dense.h"
 #include "GraphOne/mat/dense.h"
 #include "GraphOne/graph/builder.h"
@@ -12,7 +12,7 @@ using namespace graph_one;
 int main () {
     // install_oneshot_signal_handlers();
     
-    Loader<> loader;
+    GraphLoader<> loader;
     EdgeCache<vstart_t::FROM_0_TO_0, int, vid_t, eid_t> cache = 
         loader.LoadEdgesFromTxt<int>("../datasets/sample/sample.adj");
     CsrMat<arch_t::cuda, int, vid_t, eid_t, vstart_t::FROM_0_TO_0> csr = 

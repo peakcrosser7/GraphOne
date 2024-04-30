@@ -1,13 +1,13 @@
 #include "test.hpp"
 
-#include "GraphOne/loader/loader.h"
+#include "GraphOne/loader/graph_loader.h"
 #include "GraphOne/utils/string.hpp"
 
 using namespace std;
 using namespace graph_one;
 
 int main() {
-    Loader<vstart_t::FROM_1_TO_1> loader(true);
+    GraphLoader<vstart_t::FROM_1_TO_1> loader(true);
     LoadEdgeOpts opts;
     opts.is_directed = true;
     auto edges = loader.LoadEdgesFromTxt<int>("../datasets/sample/sample.adj", opts);

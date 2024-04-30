@@ -3,6 +3,8 @@
 #include <memory>
 #include <type_traits>
 
+#include "GraphOne/utils/log.hpp"
+
 namespace graph_one::gnn {
 
 struct ModuleHolderIndicator {};
@@ -39,7 +41,7 @@ template <typename T, typename C>
 struct is_module_holder_of_impl<true, T, C>
     : std::is_same<typename T::contained_type, C> {};
 
-// check `T` is a `ModuleHolder` and its module type is `C`
+// check `T` is a `ModuleHolder` and its contained module type is `C`
 // Helper template.
 template <typename T, typename C>
 struct is_module_holder_of : is_module_holder_of_impl<
@@ -52,7 +54,9 @@ class ModuleHolder : ModuleHolderIndicator {
 public:
     using contained_type = contained_t;
 
-     ModuleHolder() : impl_(default_construct()) {
+    /// Default constructs the contained module if if has a default constructor,
+    /// else produces a static error.
+    ModuleHolder() : impl_(default_construct()) {
         static_assert(
             std::is_default_constructible_v<contained_t>,
             "You are trying to default construct a module which has "
@@ -60,8 +64,13 @@ public:
             "(e.g. `Linear linear = nullptr;` instead of `Linear linear;`).");
     }
 
+    /// Constructs the `ModuleHolder` with an empty contained value. Access to
+    /// the underlying module is not permitted and will throw an exception, until
+    /// a value is assigned.
     ModuleHolder(std::nullptr_t) : impl_(nullptr) {}
 
+    /// Constructs the `ModuleHolder` with a contained module, forwarding all
+    /// arguments to its constructor.
     template <
         typename holder_t, typename... args_t,
         typename = std::enable_if_t<

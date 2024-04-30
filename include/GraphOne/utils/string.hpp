@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
 #include <type_traits>
 
 #include "GraphOne/type.hpp"
@@ -64,13 +65,20 @@ struct HasToStrMethod<T, std::void_t<ToStrFuncType<T>>> : std::true_type {};
 
 template <typename T>
 std::string ToString(const T& x) {
-    if constexpr (std::is_arithmetic_v<T>) {
+    if constexpr (std::is_pointer_v<T>) {
+        return "&" + ToString(*x);
+    } else if constexpr (std::is_arithmetic_v<T>) {
         return std::to_string(x);
     } else if constexpr (HasToStrMethod<T>::value){
         return x.ToString();
     } else {
         return std::string(x);
     }
+}
+
+template <typename K, typename V>
+std::string ToString(const std::pair<K, V>& p) {
+    return "(" + ToString(p.first) + "," + ToString(p.second) + ")";
 }
 
 template <>
@@ -101,6 +109,20 @@ std::string VecToString(const std::vector<T> &vec,
     }
     if (sz > 0) {
         str += "\b";
+    }
+    return str += "]";
+}
+
+template <typename K, typename V, typename STR_FUNC = decltype(ToString<std::pair<K,V>>)>
+std::string HashmapToString(const std::unordered_map<K, V> &hashmap,
+                        STR_FUNC str_func = ToString<std::pair<K,V>>) {
+    std::string str = "[";
+    size_t sz = hashmap.size();
+    for (const auto& p: hashmap) {
+        str += str_func(p);
+        if (--sz != 0) {
+            str += ",";
+        }
     }
     return str += "]";
 }
