@@ -41,6 +41,10 @@ struct CsrMat {
           col_indices(col_indices),
           values(values) {}
 
+    CsrMat(const CsrMat& other) = default;
+
+    CsrMat& operator=(const CsrMat& other) = default;
+
     std::string ToString() const {
         return "CsrMat{ "
             "arch_value:" + utils::ToString(arch_value) + ", " +

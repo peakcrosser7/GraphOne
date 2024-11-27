@@ -101,7 +101,7 @@ template <
     typename        mat_value_t,
     typename        vec_x_value_t,
     typename        vec_y_value_t>
-struct SpmvParams {
+struct SpmvCsrParams {
     mat_value_t*         d_values;            ///< Pointer to the array of \p num_nonzeros values of the corresponding nonzero elements of matrix <b>A</b>.
     offset_t*            d_row_end_offsets;   ///< Pointer to the array of \p m offsets demarcating the end of every row in \p d_column_indices and \p d_values
     index_t*             d_column_indices;    ///< Pointer to the array of \p num_nonzeros column-indices of the corresponding nonzero elements of matrix <b>A</b>.  (Indices are zero-valued.)
@@ -215,7 +215,7 @@ struct AgentSpmv
     union MergeItem
     {
         // Value type to pair with index type OffsetT (NullType if loading values directly during merge)
-        typedef typename cub::If<AgentSpmvPolicyT::DIRECT_LOAD_NONZEROS, cub::NullType, vec_y_value_t>::Type MergeValueT;
+        typedef typename std::conditional_t<AgentSpmvPolicyT::DIRECT_LOAD_NONZEROS, cub::NullType, vec_y_value_t> MergeValueT;
 
         offset_t     row_end_offset;
         MergeValueT  nonzero;
@@ -256,7 +256,7 @@ struct AgentSpmv
 
     _TempStorage&                   temp_storage;         /// Reference to temp_storage
 
-    SpmvParams<index_t, 
+    SpmvCsrParams<index_t, 
                offset_t, 
                mat_value_t, 
                vec_x_value_t,
@@ -278,7 +278,7 @@ struct AgentSpmv
      */
     __device__ __forceinline__ AgentSpmv(
         TempStorage&                    temp_storage,           ///< Reference to temp_storage
-        SpmvParams<index_t, 
+        SpmvCsrParams<index_t, 
                offset_t, 
                mat_value_t, 
                vec_x_value_t,

@@ -52,12 +52,10 @@ struct SSSPFunctor : AdvanceFunctor<vid_t, eid_t, dist_t, sssp_dstatus_t> {
         auto* const dists = d_status.dists;
         dist_t src_dist = dists[src];
         dist_t dist_to_dst = src_dist + weight;
-        // Check if the destination node has been claimed as someone's child
         dist_t recover_dist = archi::cuda::AtomicMin(&dists[dst], dist_to_dst);
 
-        archi::cuda::print("tid=%u src=%u, dst=%u, e=%u, w=%d dist_to_dst=%f recover_dist=%f\n", 
-            threadIdx.x, src, dst, edge, weight, dist_to_dst, recover_dist);
-        // 距离更小则更新输出前沿
+        // archi::cuda::print("tid=%u src=%u, dst=%u, e=%u, w=%d dist_to_dst=%f recover_dist=%f\n", 
+        //     threadIdx.x, src, dst, edge, weight, dist_to_dst, recover_dist);
         return dist_to_dst < recover_dist;
     }
 
@@ -85,7 +83,7 @@ int main(int argc, char *argv[]) {
     app.add_option("--src", src, "source vertex in SSSP")->required();
     CLI11_PARSE(app, argc, argv);
 
-    GraphLoader<vstart_t::FROM_1_TO_1> loader(reoreder_vid);
+    GraphLoader<vstart_t::FROM_0_TO_0> loader(reoreder_vid);
     auto cache = loader.LoadEdgesFromTxt<dist_t>(input_graph, opts);
     auto g = graph::build<arch_t::cuda, AdvanceViews>(cache);
     using graph_t = decltype(g);

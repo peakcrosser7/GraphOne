@@ -1,9 +1,13 @@
 #pragma once
 
 #include <vector>
+#include <string>
 
 #include "GraphOne/type.hpp"
 #include "GraphOne/base/buffer.h"
+#include "GraphOne/frontier/base.h"
+#include "GraphOne/utils/string.hpp"
+
 
 namespace graph_one {
 

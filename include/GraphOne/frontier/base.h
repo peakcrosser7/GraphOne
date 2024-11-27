@@ -6,7 +6,8 @@ namespace graph_one {
 
 enum FrontierKind : uint8_t {
     SPARSE_BASED = 1 << 1,
-    DENSE_BASED  = 1 << 2
+    DENSE_BASED  = 1 << 2,
+    ALL_ACTIVE   = (1 << 1) | (1 << 2)
 };
 
 constexpr inline FrontierKind operator|(FrontierKind lhs, FrontierKind rhs) {
@@ -28,6 +29,8 @@ struct BaseFrontier {
 
     virtual void AfterEngine() {}
 
+    /// @brief converge according to the frontier
+    /// @return default return false when not according to the frontier
     virtual bool IsConvergent() = 0;
 };
 

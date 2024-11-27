@@ -1,10 +1,5 @@
 #pragma once 
 
-#include <vector>
-#include <functional>
-
-#include "GraphOne/archi/macro/macro.h"
-
 namespace graph_one {
 
 template <typename graph_t,
@@ -15,7 +10,8 @@ struct ComponentX {
     using hstatus_type = hstatus_t;
     using dstatus_type = dstatus_t;
     // using frontier_type = frontier_t;
-    using vertex_type = typename graph_t::vertex_type;    
+    using vertex_type = typename graph_t::vertex_type;
+    using edge_type = typename graph_t::edge_type;
 
     ComponentX(const graph_t& graph_, hstatus_t& h_status_, dstatus_t& d_status_)
         : graph(graph_), h_status(h_status_), d_status(d_status_) {}

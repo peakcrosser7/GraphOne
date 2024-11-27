@@ -76,6 +76,11 @@ std::string ToString(const T& x) {
     }
 }
 
+template <>
+std::string ToString<bool>(const bool& x) {
+    return (x ? "true" : "false");
+}
+
 template <typename K, typename V>
 std::string ToString(const std::pair<K, V>& p) {
     return "(" + ToString(p.first) + "," + ToString(p.second) + ")";

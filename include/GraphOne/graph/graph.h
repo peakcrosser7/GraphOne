@@ -3,13 +3,14 @@
 #include "GraphOne/type.hpp"
 #include "GraphOne/archi.h"
 #include "GraphOne/graph/graph_view.hpp"
-#include "GraphOne/graph/arch_ref.h"
+#include "GraphOne/graph/graph_arch_ref.h"
 #include "GraphOne/mat/csr.h"
 #include "GraphOne/mat/csc.h"
 #include "GraphOne/mat/convert.h"
 
 namespace graph_one {
 
+// now Graph just only supports one format of matrix, i.e. csr
 template <arch_t arch, graph_view_t views,
           vstart_t v_start,
           typename vprop_t, 
@@ -30,7 +31,7 @@ public:
     using graph_mat_t = typename graph_mat<mat_view, arch, weight_t, vertex_t,
                                            edge_t, v_start>::type;
     using graph_tmat_t = std::conditional_t<both_mat, graph_mat_t, empty_t>;
-    using arch_ref_t = GraphArchRef<mat_view, arch, v_start, vprop_t, vertex_t, edge_t, weight_t>;
+    using arch_ref_t = GraphArchRef<views, arch, v_start, vprop_t, vertex_t, edge_t, weight_t>;
 
 protected:
     static_assert(has_some_views(views, graph_view_t::normal, graph_view_t::transpose));
@@ -58,13 +59,36 @@ public:
         return mat_.nnz;
     }
 
-    typename std::conditional_t<has_csr_, edge_t, void>
-    get_degree(vertex_t vid) const {
-        if constexpr (has_csr_) {
-            return mat_.row_offsets[vid + 1] - mat_.row_offsets[vid];
+    template <graph_view_t Views = views>
+    std::enable_if_t<has_csr_ && has_view(Views, graph_view_t::normal), vertex_t>
+    get_out_degree(vertex_t vid) const {
+        return mat_.row_offsets[vid + 1] - mat_.row_offsets[vid];
+    }
+
+    template <graph_view_t Views = views>
+    std::enable_if_t<!has_csr_ || !has_view(Views, graph_view_t::normal), vertex_t>
+    get_out_degree(vertex_t vid) = delete;
+
+    template <graph_view_t Views = views>
+    std::enable_if_t<has_csr_ && has_view(Views, graph_view_t::transpose), vertex_t>
+    get_in_degree(vertex_t vid) const {
+        if constexpr (both_mat) {
+            return transpose_mat_.row_offsets[vid + 1] - transpose_mat_.row_offsets[vid];
         } else {
-            return;
+            return mat_.row_offsets[vid + 1] - mat_.row_offsets[vid];
         }
+    }
+
+    template <graph_view_t Views = views>
+    std::enable_if_t<!has_csr_ || !has_view(Views, graph_view_t::transpose), vertex_t>
+    get_in_degree(vertex_t vid) = delete;
+
+    const graph_mat_t& graph_mat() const {
+        return mat_;
+    }
+
+    const graph_tmat_t& graph_transpose_mat() const {
+        return transpose_mat_;
     }
 
     arch_ref_t ToArch() const {
@@ -75,6 +99,11 @@ public:
             arch_ref.row_offsets = mat_.row_offsets.data();
             arch_ref.col_indices = mat_.col_indices.data();
             arch_ref.values = mat_.values.data();
+            if constexpr (both_mat) {
+                arch_ref.trans_row_offsets = transpose_mat_.row_offsets.data();
+                arch_ref.trans_col_indices = transpose_mat_.col_indices.data();
+                arch_ref.trans_values = transpose_mat_.values.data();
+            }
         }
         if constexpr (!std::is_same_v<vprop_t, empty_t>) {
             arch_ref.vprops = vprops_.ToArch();

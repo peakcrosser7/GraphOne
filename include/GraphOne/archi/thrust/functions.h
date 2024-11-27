@@ -29,6 +29,13 @@ void fill(ForwardIterator first, ForwardIterator last, const T &value) {
         thrust::fill(exec_policy<arch>, first, last, value));
 }
 
+template <arch_t arch, typename InputIterator,
+          typename UnaryFunction>
+InputIterator for_each(InputIterator first, InputIterator last, UnaryFunction f) {
+    return checkThrustErrors_with_ret(thrust::for_each(
+        exec_policy<arch>, first, last, f));
+}
+
 template <arch_t arch, typename InputIterator, typename OutputIterator,
           typename AssociativeOperator>
 OutputIterator inclusive_scan(InputIterator first, InputIterator last,

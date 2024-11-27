@@ -70,7 +70,7 @@ template <
     typename        vec_y_value_t,
     typename        functor_t>
 __global__ void DeviceSpmv1ColKernel(
-    SpmvParams<index_t, 
+    SpmvCsrParams<index_t, 
                offset_t, 
                mat_value_t, 
                vec_x_value_t,
@@ -80,7 +80,7 @@ __global__ void DeviceSpmv1ColKernel(
         AgentSpmvPolicyT::VECTOR_VALUES_LOAD_MODIFIER, 
         vec_x_value_t, 
         index_t>;
-    using SpmvParamsT = SpmvParams<
+    using SpmvParamsT = SpmvCsrParams<
         index_t, offset_t, 
         mat_value_t, vec_x_value_t, vec_y_value_t>;
 
@@ -113,7 +113,7 @@ template <
     typename    SpmvPolicyT,                    ///< Parameterized SpmvPolicy tuning policy type
     typename    OffsetT,                        ///< Signed integer type for sequence offsets
     typename    CoordinateT,                    ///< Merge path coordinate type
-    typename    SpmvParamsT>                    ///< SpmvParams type
+    typename    SpmvParamsT>                    ///< SpmvCsrParams type
 __global__ void DeviceSpmvSearchKernel(
     int             num_merge_tiles,            ///< [in] Number of SpMV merge tiles (spmv grid size)
     CoordinateT*    d_tile_coordinates,         ///< [out] Pointer to the temporary array of tile starting coordinates
@@ -171,7 +171,7 @@ template <
 >
 __launch_bounds__ (int(SpmvPolicyT::BLOCK_THREADS))
 __global__ void DeviceSpmvKernel(
-    SpmvParams<index_t, 
+    SpmvCsrParams<index_t, 
                offset_t, 
                mat_value_t, 
                vec_x_value_t,
@@ -262,8 +262,8 @@ struct MergeBasedSpmv {
         INIT_KERNEL_THREADS = 128
     };
 
-    // SpmvParams bundle type
-    typedef SpmvParams<index_t, 
+    // SpmvCsrParams bundle type
+    typedef SpmvCsrParams<index_t, 
                        offset_t, 
                        mat_value_t, 
                        vec_x_value_t,

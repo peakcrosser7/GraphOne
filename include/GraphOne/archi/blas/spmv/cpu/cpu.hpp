@@ -1,7 +1,7 @@
 #pragma once 
 
-#include "GraphOne/archi/blas/SpMV/def.hpp"
-#include "GraphOne/archi/blas/SpMV/cpu/naive.hpp"
+#include "GraphOne/archi/blas/spmv/def.hpp"
+#include "GraphOne/archi/blas/spmv/cpu/naive.hpp"
 
 namespace graph_one::blas {
 
@@ -17,7 +17,7 @@ struct SpmvDispatcher<SpmvCpuNaive, functor_t,
                       vec_x_value_t, vec_y_value_t> {
 
     using spmv_params_t =
-        SpmvParams<index_t, offset_t, mat_value_t, vec_x_value_t, vec_y_value_t>;
+        SpmvCsrParams<index_t, offset_t, mat_value_t, vec_x_value_t, vec_y_value_t>;
 
     SpmvDispatcher(spmv_params_t &spmv_params)
     : params(spmv_params) {}

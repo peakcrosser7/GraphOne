@@ -14,6 +14,7 @@
 
 #include "GraphOne/frontier/sparse_dbl.h"
 #include "GraphOne/frontier/dense_dbl.h"
+#include "GraphOne/frontier/all_active.h"
 
 #include "GraphOne/base/run.h"
 #include "GraphOne/debug/backtrace.hpp"

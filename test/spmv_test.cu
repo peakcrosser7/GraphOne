@@ -5,7 +5,7 @@
 #include "GraphOne/base/buffer.h"
 #include "GraphOne/loader/graph_loader.h"
 #include "GraphOne/mat/convert.h"
-#include "GraphOne/archi/blas/SpMV/spmv.h"
+#include "GraphOne/archi/blas/spmv/spmv.h"
 #include "GraphOne/archi/thrust/thrust.h"
 #include "GraphOne/utils.h"
 
@@ -80,7 +80,7 @@ struct SpmvFunctor {
 };
 
 using spmv_t =
-    blas::SpmvDispatcher<blas::SpmvCudaMergeBased, SpmvFunctor, vid_t,
+    blas::SpmvDispatcher<blas::SpmvCudaCsrMergeBased, SpmvFunctor, vid_t,
                             eid_t, dist_t, dist_t, dist_t>;
 
 
@@ -101,7 +101,7 @@ int main() {
     LOG_INFO("csr: ", csr);
     LOG_INFO("x: ", x);
 
-    spmv_t spmv = blas::MakeSpMV<arch, blas::SpmvCudaMergeBased, SpmvFunctor>(
+    spmv_t spmv = blas::MakeCsrSpMV<arch, blas::SpmvCudaCsrMergeBased, SpmvFunctor>(
             csr.n_rows, csr.n_cols, csr.nnz,
             csr.row_offsets.data(), csr.col_indices.data(), csr.values.data(),
             x.data(), y.data()

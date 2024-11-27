@@ -19,6 +19,8 @@ namespace graph_one {
 
 namespace engine {
 
+namespace {
+
 template <typename tparams,    // should be archi::LaunchTparams<arch_t::cuda>
           typename functor_t,
           typename graph_t, 
@@ -56,8 +58,8 @@ static void advance_kernel(
         vertices[tid] = v;
         if (utils::is_vertex_valid<vstart>(v)) {
             // 起始边偏移
-            sedges[tid] = graph.get_starting_edge(v);
-            th_deg = graph.get_degree(v);
+            sedges[tid] = graph.get_starting_out_edge(v);
+            th_deg = graph.get_out_degree(v);
         } else {
             th_deg = 0;
         }
@@ -137,15 +139,15 @@ static void advance_kernel(
         // If the vertex is valid, get its edge, neighbor and edge weight.
         // 边索引 (i-degrees[id])表示当前线程在结点v的邻接表中的偏移
         auto e = sedges[id] + i - degrees[id];
-        auto dst = graph.get_dst_vertex(e);   // 目标结点
-        auto w = graph.get_edge_weight(e);          // 边权重
+        auto dst = graph.get_dst_vertex_by_out_edge(e);   // 目标结点
+        auto w = graph.get_out_edge_weight(e);          // 边权重
 
         // Use-defined advance condition.
         // advance操作 判断边是否满足条件
         bool cond = functor_t::advance(src, dst, e, w, d_status);
 
-        archi::cuda::print("g_tid=%u src=%u, dst=%u, e=%u, w=%d d_status.dists[dst]=%f  cond=%d\n",
-            g_tid, src, dst, e, w, d_status.dists[dst], cond);
+        // archi::cuda::print("g_tid=%u src=%u, dst=%u, e=%u, w=%d d_status.dists[dst]=%f  cond=%d\n",
+        //     g_tid, src, dst, e, w, d_status.dists[dst], cond);
 
         // Store [neighbor] into the output frontier.
         if constexpr (frontier_t::has_output) {
@@ -155,10 +157,12 @@ static void advance_kernel(
     }
 }
 
+}   // namespace
+
 template <typename functor_t, typename comp_t, typename frontier_t>
-class AdvanceGC : public BaseEngine<comp_t, frontier_t> {
+class AdvanceGC : public GcEngine<comp_t, frontier_t> {
 public:
-    using base_t = BaseEngine<comp_t, frontier_t>;
+    using base_t = GcEngine<comp_t, frontier_t>;
     using graph_t = typename base_t::graph_type;
     using hstatus_t = typename base_t::hstatus_type;
     using dstatus_t = typename base_t::dstatus_type;
@@ -190,9 +194,9 @@ public:
         auto frontier_ref = frontier.ToArch();
         auto v_degree_func = [=] __ONE_ARCH__ (const vertex_t &i) {
             auto vid = frontier_ref.get(i);
-            // archi::cuda::print("vid=%u, degree=%u\n", vid, graph_ref.get_degree(vid));
+            // archi::cuda::print("vid=%u, degree=%u\n", vid, graph_ref.get_out_degree(vid));
             return (utils::is_vertex_valid<graph_t::vstart_value>(vid)
-                        ? graph_ref.get_degree(vid) : 0);
+                        ? graph_ref.get_out_degree(vid) : 0);
         };
 
         auto sz = archi::transform_reduce<arch>(

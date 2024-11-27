@@ -74,6 +74,14 @@ struct StridedMat {
         return values.data() + (i * n_contiguous);
     }
 
+    const value_t* data() const {
+        return values.data();
+    }
+
+    value_t* data() {
+        return values.data();
+    }
+
     value_t& at(index_t stride, index_t contiguous) {
         return values[stride * n_contiguous + contiguous];
     }

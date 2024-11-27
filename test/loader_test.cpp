@@ -7,7 +7,7 @@ using namespace std;
 using namespace graph_one;
 
 int main() {
-    GraphLoader<vstart_t::FROM_1_TO_1> loader(true);
+    GraphLoader<vstart_t::FROM_0_TO_0> loader(true);
     LoadEdgeOpts opts;
     opts.is_directed = true;
     auto edges = loader.LoadEdgesFromTxt<int>("../datasets/sample/sample.adj", opts);

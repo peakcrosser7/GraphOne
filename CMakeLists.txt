@@ -54,7 +54,7 @@ include_directories(third_party)
 include_directories(include)
 
 function (add_cuda_exec exec_name exec_file)
-    # GPU代码
+    cmake_parse_arguments(ARG "" "" "LIB" ${ARGN})
     add_executable(${exec_name} ${exec_file})
     # target_link_libraries(${exec_name} PRIVATE graph_one)
     set_target_properties(${exec_name} PROPERTIES 
@@ -62,7 +62,10 @@ function (add_cuda_exec exec_name exec_file)
         CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES}
         CUDA_SEPARABLE_COMPILATION ON
     )
-    target_link_libraries(${exec_name} PRIVATE nvtx3-cpp)
+    if(ARG_LIB)
+        target_link_libraries(${exec_name} PRIVATE ${ARG_LIB})
+    endif()
+    # target_link_libraries(${exec_name} PRIVATE nvtx3-cpp)
 endfunction (add_cuda_exec)
 
 add_subdirectory(apps)

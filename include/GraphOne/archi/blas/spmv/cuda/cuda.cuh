@@ -1,9 +1,9 @@
 #pragma once
 
 #include "GraphOne/archi/check/cuda.cuh"
-#include "GraphOne/archi/blas/SpMV/def.hpp"
-#include "GraphOne/archi/blas/SpMV/cuda/csr_vector.cuh"
-#include "GraphOne/archi/blas/SpMV/cuda/merge_based/merge_based_spmv.cuh"
+#include "GraphOne/archi/blas/spmv/def.hpp"
+#include "GraphOne/archi/blas/spmv/cuda/csr_vector.cuh"
+#include "GraphOne/archi/blas/spmv/cuda/merge_based/merge_based_spmv.cuh"
 
 namespace graph_one::blas {
 
@@ -19,7 +19,7 @@ struct SpmvDispatcher<SpmvCudaCsrVector, functor_t,
                       vec_x_value_t, vec_y_value_t> {
 
     using spmv_params_t =
-        SpmvParams<index_t, offset_t, mat_value_t, vec_x_value_t, vec_y_value_t>;
+        SpmvCsrParams<index_t, offset_t, mat_value_t, vec_x_value_t, vec_y_value_t>;
     
     SpmvDispatcher(spmv_params_t &spmv_params)
     : params(spmv_params),
@@ -61,25 +61,26 @@ struct SpmvDispatcher<SpmvCudaCsrVector, functor_t,
 };
 
 
-struct SpmvCudaMergeBased {
+struct SpmvCudaCsrMergeBased {
     constexpr static arch_t arch_type = arch_t::cuda;
 };
 
 template <typename functor_t,
           typename index_t, typename offset_t, typename mat_value_t,
           typename vec_x_value_t, typename vec_y_value_t>
-struct SpmvDispatcher<SpmvCudaMergeBased, functor_t, 
+struct SpmvDispatcher<SpmvCudaCsrMergeBased, functor_t, 
                       index_t, offset_t, mat_value_t,
                       vec_x_value_t, vec_y_value_t> {
 
-    SpmvDispatcher(SpmvParams<index_t, offset_t, mat_value_t, vec_x_value_t, vec_y_value_t> &spmv_params)
+    SpmvDispatcher(SpmvCsrParams<index_t, offset_t, mat_value_t, 
+                                 vec_x_value_t, vec_y_value_t> &spmv_params)
     : spmv_obj(), 
       temp_storage_bytes(0), 
       d_temp_storage(nullptr) {
-        params.d_values = spmv_params.values;
-        params.d_row_end_offsets = spmv_params.row_offsets + 1;
-        params.d_column_indices = spmv_params.col_indices;
-        params.d_vector_x = spmv_params.vector_x;
+        params.d_values = const_cast<mat_value_t*>(spmv_params.values);
+        params.d_row_end_offsets = const_cast<offset_t*>(spmv_params.row_offsets) + 1;
+        params.d_column_indices = const_cast<index_t*>(spmv_params.col_indices);
+        params.d_vector_x = const_cast<vec_x_value_t*>(spmv_params.vector_x);
         params.d_vector_y = spmv_params.vector_y;
         params.num_rows = spmv_params.n_rows;
         params.num_cols = spmv_params.n_cols;
@@ -102,7 +103,7 @@ struct SpmvDispatcher<SpmvCudaMergeBased, functor_t,
     }
 
 
-    merge::SpmvParams<index_t, offset_t, mat_value_t, vec_x_value_t,
+    merge::SpmvCsrParams<index_t, offset_t, mat_value_t, vec_x_value_t,
                       vec_y_value_t>
         params;
     merge::MergeBasedSpmv<index_t, offset_t, mat_value_t, vec_x_value_t,

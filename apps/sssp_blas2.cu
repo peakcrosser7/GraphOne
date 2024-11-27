@@ -58,22 +58,22 @@ struct SSSPFunctor : BlasFunctor<vid_t, dist_t, sssp_dstatus_t, dist_t, dist_t> 
     }
 
     __ONE_DEV_INL__
-    static dist_t construct(const vid_t& vid, const sssp_dstatus_t& d_status) {
+    static dist_t construct_each(const vid_t& vid, const sssp_dstatus_t& d_status) {
         return d_status.dists[vid];
     }
 
     __ONE_DEV_INL__
-    static dist_t combine(const dist_t& weight, const dist_t& info) {
+    static dist_t gather_combine(const dist_t& weight, const dist_t& info) {
         return (info == kMaxDist) ? info : weight + info;
     }
 
     __ONE_DEV_INL__
-    static dist_t reduce(const dist_t& lhs, const dist_t& rhs) {
+    static dist_t gather_reduce(const dist_t& lhs, const dist_t& rhs) {
         return std::min(lhs, rhs);
     }
 
     __ONE_DEV_INL__
-    static bool apply(const vid_t& vid, const dist_t& res, sssp_dstatus_t& d_status) {
+    static bool apply_each(const vid_t& vid, const dist_t& res, sssp_dstatus_t& d_status) {
         if (res < d_status.dists[vid]) {
             d_status.dists[vid] = res;
             return true;
@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
     app.add_option("--src", src, "source vertex in SSSP")->required();
     CLI11_PARSE(app, argc, argv);
 
-    GraphLoader<vstart_t::FROM_1_TO_1> loader;
+    GraphLoader<vstart_t::FROM_0_TO_0> loader;
     auto cache = loader.LoadEdgesFromTxt<dist_t>(input_graph, opts);
     auto g = graph::build<arch_t::cuda, BlasViews>(cache);
     using graph_t = decltype(g);

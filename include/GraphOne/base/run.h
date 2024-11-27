@@ -17,7 +17,6 @@ void Run(comp_t& comp, frontier_t& frontier) {
     LOG_DEBUG("init ", frontier);
 
     while (comp.IsConvergent() == false && frontier.IsConvergent() == false) {
-        LOG_DEBUG(">>>iter:", comp.d_status.iter);
 
         comp.BeforeEngine();
         frontier.BeforeEngine();

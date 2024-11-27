@@ -146,26 +146,26 @@ struct AgentSegmentFixup
 
         // Whether or not do fixup using RLE + global atomics
         USE_ATOMIC_FIXUP    = (CUB_PTX_ARCH >= 350) && 
-                                (cub::Equals<ValueT, float>::VALUE || 
-                                 cub::Equals<ValueT, int>::VALUE ||
-                                 cub::Equals<ValueT, unsigned int>::VALUE ||
-                                 cub::Equals<ValueT, unsigned long long>::VALUE),
+                                (std::is_same<ValueT, float>::value || 
+                                 std::is_same<ValueT, int>::value ||
+                                 std::is_same<ValueT, unsigned int>::value ||
+                                 std::is_same<ValueT, unsigned long long>::value),
         // USE_ATOMIC_FIXUP    = false,
 
         // Whether or not the scan operation has a zero-valued identity value (true if we're performing addition on a primitive type)
-        HAS_IDENTITY_ZERO   = (cub::Equals<ReductionOpT, cub::Sum>::VALUE) && (cub::Traits<ValueT>::PRIMITIVE),
+        HAS_IDENTITY_ZERO   = (std::is_same<ReductionOpT, cub::Sum>::value) && (cub::Traits<ValueT>::PRIMITIVE),
     };
 
     // Cache-modified Input iterator wrapper type (for applying cache modifier) for keys
-    typedef typename cub::If<cub::IsPointer<PairsInputIteratorT>::VALUE,
+    typedef typename std::conditional_t<std::is_pointer<PairsInputIteratorT>::value,
             cub::CacheModifiedInputIterator<AgentSegmentFixupPolicyT::LOAD_MODIFIER, KeyValuePairT, OffsetT>,    // Wrap the native input pointer with CacheModifiedValuesInputIterator
-        PairsInputIteratorT>::Type                                                                              // Directly use the supplied input iterator type
+        PairsInputIteratorT>                                                                              // Directly use the supplied input iterator type
         WrappedPairsInputIteratorT;
 
     // Cache-modified Input iterator wrapper type (for applying cache modifier) for fixup values
-    typedef typename cub::If<cub::IsPointer<AggregatesOutputIteratorT>::VALUE,
+    typedef typename std::conditional_t<std::is_pointer<AggregatesOutputIteratorT>::value,
             cub::CacheModifiedInputIterator<AgentSegmentFixupPolicyT::LOAD_MODIFIER, ValueT, OffsetT>,    // Wrap the native input pointer with CacheModifiedValuesInputIterator
-            AggregatesOutputIteratorT>::Type                                                             // Directly use the supplied input iterator type
+            AggregatesOutputIteratorT>                                                             // Directly use the supplied input iterator type
         WrappedFixupInputIteratorT;
 
     // Reduce-value-by-segment scan operator

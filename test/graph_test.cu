@@ -18,7 +18,7 @@ int main () {
     CsrMat<arch_t::cuda, int, vid_t, eid_t, vstart_t::FROM_0_TO_0> csr = 
         cache.ToCsr<arch_t::cuda, true>();
 
-    DenseMat<arch_t::cpu, double> feats(csr.n_rows, 4);
+    DenseMat<arch_t::cpu, float> feats(csr.n_rows, 4);
     DenseVec<arch_t::cpu, int32_t> labels(csr.n_rows);
     loader.LoadVertexStatusFromTxt<int32_t>("../datasets/sample/sample_more.feat",[&](vid_t vid, std::vector<int32_t>& vdata) {
         if (vdata.size() < 5) {
@@ -30,18 +30,18 @@ int main () {
         labels[vid] = vdata.back();
         return true;
     });
-    cout << feats.ToString() << endl;
-    cout << labels.ToString() << endl;
+    cout << "more_feats:" << feats.ToString() << endl;
+    cout << "label:" << labels.ToString() << endl;
 
     auto feat = loader.LoadVertexVecFromTxt<arch_t::cuda, int>("../datasets/sample/sample_single.feat", csr.n_rows);
-    cout << feat.ToString() << endl;
+    cout << "single_feat:" << feat.ToString() << endl;
 
     DenseVec<arch_t::cpu, float> feat2(csr.n_rows);
     loader.LoadVertexStatusFromTxt<float>("../datasets/sample/sample_single.feat", [&](vid_t vid, std::vector<float>& vdata) {
         feat2[vid] = vdata.front();
         return true;
     });
-    cout << feat2.ToString() << endl;
+    cout << "single_feat2: " << feat2.ToString() << endl;
 
     gnn::vprop_t<arch_t::cpu> vprops1(csr.n_rows, 4);
     loader.LoadVertexStatusFromTxt<int32_t>("../datasets/sample/sample_more.feat", [&](vid_t vid, std::vector<int32_t>& vdata) {
@@ -56,9 +56,7 @@ int main () {
     });
     cout << "vprop1:" <<vprops1.ToString() << endl;
 
-    gnn::vprop_t<arch_t::cuda> vprops2;
-    vprops2.features = feats;
-    vprops2.labels = labels;
+    gnn::vprop_t<arch_t::cuda> vprops2(feats, labels);
     cout << "vprop2:" <<vprops2.ToString() << endl;
 
     vector<vector<double>> feat_vec(csr.n_rows);
@@ -69,9 +67,7 @@ int main () {
         feat_vec[vid] = std::move(vdata);
         return true;
     });
-    gnn::vprop_t<arch_t::cuda> vprops3;
-    vprops3.features = DenseMat<arch_t::cuda, double>(feat_vec);
-    vprops3.labels = label_vec;
+    gnn::vprop_t<arch_t::cuda, double> vprops3(feat_vec, label_vec);
     cout << "vprop3:" << vprops3.ToString() << endl;
 
 
