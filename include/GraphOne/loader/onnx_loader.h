@@ -8,7 +8,7 @@
 
 #include "onnx/onnx.pb.h"
 
-#include "GraphOne/gnn/tensor.h"
+#include "GraphOne/domain/gnn/tensor.h"
 #include "GraphOne/utils/log.hpp"
 #include "GraphOne/archi/mem/mem.h"
 
@@ -38,7 +38,7 @@ class OnnxLoader {
 public:
     static constexpr const char * file_ext = ".onnx";
 
-    template <arch_t arch, typename value_t=float>
+    template <arch_t arch, typename value_t = float>
     static std::unordered_map<std::string, gnn::param_t<arch, value_t>>
     LoadInitializer(const std::string& filepath) {
         if (!utils::StrEndWith(filepath, file_ext)) {
@@ -77,10 +77,10 @@ private:
         gnn::param_t<arch, value_t> parameter{nullptr};
         if (shape_sz == 2) {
             parameter = gnn::param_t<arch, value_t>(
-                new gnn::tensor_t<arch, value_t>(shape[0], shape[1]));
+                new gnn::TensorBase<arch, value_t>(shape[0], shape[1]));
         } else {
             parameter = gnn::param_t<arch, value_t>(
-                new gnn::tensor_t<arch, value_t>(1, shape[0]));
+                new gnn::TensorBase<arch, value_t>(1, shape[0]));
         }
         if (!is_same_onnx_datatype<value_t>(onnx::TensorProto_DataType(data.data_type()))) {
             LOG_ERROR("data type of parameter '", name, "' is `", 

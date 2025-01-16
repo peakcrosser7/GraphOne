@@ -13,21 +13,17 @@ constexpr const char LOG_ERROR_STR[]   = "[ERROR] ";
 constexpr const char LOG_DEBUG_STR[]   = "[DEBUG] ";
 constexpr const char LOG_WARNING_STR[] = "[WARN]  ";
 
-template <typename... args_t>
-void printx(args_t&&... args) {
-    (std::cout << ... << args) << std::endl;
-}
 
 template<typename T>
 std::enable_if_t<!std::is_class_v<T> || !utils::HasToStrMethod<T>::value, const T&>
-log_helper(const T& value) {
+print_helper(const T& value) {
     return value;
 }
 
 /// @brief log helper to call ToString() method automatically
 template<typename T>
 std::enable_if_t<std::is_class_v<T> && utils::HasToStrMethod<T>::value, std::string>
-log_helper(const T& value) {
+print_helper(const T& value) {
     return value.ToString();
 }
 
@@ -35,8 +31,13 @@ log_helper(const T& value) {
 template <const char* label, typename... args_t>
 void log(args_t&&... args) {
     std::cout << label;
-    (std::cout << ... << log_helper(args)) << std::endl;
+    (std::cout << ... << print_helper(args)) << std::endl;
 }
+
+template <typename... args_t>
+void printx(args_t&&... args) {
+    (std::cout << ... << print_helper(args)) << std::endl;
+} 
 
 template <typename... args_t>
 void LOG_INFO(args_t&&... args) {

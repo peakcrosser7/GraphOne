@@ -33,6 +33,8 @@ class GraphLoader {
     EdgeCache<v_start, edata_t, index_t, offset_t> 
     LoadEdgesFromTxt(const std::string& filepath,
         const LoadEdgeOpts& opts = LoadEdgeOpts()) {
+        LOG_DEBUG("LoadEdgesFromTxt: opts=", opts);
+        
         if (!utils::StrEndWith(filepath, opts.file_ext)) {
             LOG_ERROR("file extension does not match, it should \"", 
                 opts.file_ext, "\"");
@@ -69,7 +71,7 @@ class GraphLoader {
             pLog   = line.data();
             pToken = strtok_r(line.data(), opts.line_sep.c_str(), &pSave);
             if (nullptr == pToken) {
-                LOG_WARNING("can not extract source from (", pLog, ")");
+                LOG_WARNING("LoadEdgesFromTxt: can not extract source from (", pLog, ")");
                 continue;
             }
             edge.src = index_t(std::strtoul(pToken, nullptr, 10));
@@ -101,9 +103,11 @@ class GraphLoader {
                 }
             }
 
+            // LOG_DEBUG("loaded-edge: src=", edge.src, ", dst=", edge.dst);
             if (BeforeEdge_(edge, opts) == false) {
                 continue;
             }
+            // LOG_DEBUG("pushed-edge: src=", edge.src, ", dst=", edge.dst);
             edge_cache.push_back(edge);
 
             if (AfterEdge_(edge, opts)) {
@@ -113,7 +117,7 @@ class GraphLoader {
 
         AfterAllEdges_(edge_cache, opts);
 
-        // LOG_DEBUG("edge_info: ", "num_v=", edge_cache.num_vertices(), " num_e=", edge_cache.num_edges());
+        LOG_DEBUG("edge_info: ", "num_v=", edge_cache.num_vertices(), " num_e=", edge_cache.num_edges());
         return edge_cache;      
     }
 
@@ -149,17 +153,20 @@ class GraphLoader {
             pLog   = line.data();
             pToken = strtok_r(line.data(), opts.vertex_sep.c_str(), &pSave);
             if (nullptr == pToken) {
-                LOG_WARNING("can not extract source from (", pLog, ")");
+                LOG_WARNING("LoadVertexStatusFromTxt: can not extract source from (", pLog, ")");
                 continue;
             }
             auto vertex = index_t(std::strtoul(pToken, nullptr, 10));
+            // LOG_DEBUG("loaded vertex: ", vertex);
             if (reorder_vid_) {
                 vertex = ReorderVid_(vertex);
             }
+            // LOG_DEBUG("reordered vertex: ", vertex);
+
 
             if constexpr (std::is_same_v<parse_t, char*>) {
                 if (parser(vertex, pSave) == false) {
-                    LOG_WARNING("can not decode vertex data from (", pLog, ")");
+                    LOG_WARNING("LoadVertexStatusFromTxt: can not decode vertex data from (", pLog, ")");
                     continue;
                 }
             } else {
@@ -227,6 +234,11 @@ class GraphLoader {
         } 
         return false;
     }
+
+    const std::unordered_map<index_t, index_t>& get_vid_map() const {
+        return vid_map_;
+    }
+    
     
 protected:
 
@@ -245,14 +257,16 @@ protected:
                 && edge.src == edge.dst) {
             return false;
         }
-        if constexpr (v_start == vstart_t::FROM_0_TO_1) {
-            ++edge.src;
-            ++edge.dst;
-        }
         // 对于从1起始的结点过滤0号结点
-        if (v_start == vstart_t::FROM_1_TO_1
+        if (v_start == vstart_t::FROM_1_TO_0
                 && (edge.src == 0 || edge.dst == 0)) {
+            LOG_WARNING("BeforeEdge_: loaded an egde with vertex-0 but starting from 1: edge=(", 
+                        edge.src, ", ", edge.dst, ")");
             return false;
+        }
+        if constexpr (v_start == vstart_t::FROM_1_TO_0) {
+            --edge.src;
+            --edge.dst;
         }
 
         if (reorder_vid_ == true) {

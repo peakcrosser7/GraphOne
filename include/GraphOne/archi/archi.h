@@ -4,3 +4,4 @@
 #include "GraphOne/archi/mem/mem.h"
 #include "GraphOne/archi/thrust/thrust.h"
 #include "GraphOne/archi/only/only.h"
+#include "GraphOne/archi/blas/blas.h"

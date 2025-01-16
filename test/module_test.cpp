@@ -1,7 +1,7 @@
 
 #include <iostream>
 
-#include "GraphOne/gnn/module.h"
+#include "GraphOne/domain/gnn/module.h"
 
 using namespace std;
 using namespace graph_one;
@@ -15,7 +15,7 @@ private:
 
 public:
     DenseImpl(int dim) : Module(), 
-        weight(register_parameter(NAME_OF(weight), gnn::tensor_t<arch>(1, dim))) {}
+        weight(register_parameter(NAME_OF(weight), gnn::tensor<arch>(1, dim))) {}
 
     std::string ToString() const {
         return "Dense{ weight:" + weight->ToString() + " }"; 
@@ -32,8 +32,8 @@ private:
 public:
     LinearImpl(int indim, int outdim)
      : Module(), 
-       weight(register_parameter(NAME_OF(weight), gnn::tensor_t<arch>(indim, outdim))),
-       bias(register_parameter(NAME_OF(bias), nullptr /*gnn::tensor_t<arch>(1, outdim))*/)),
+       weight(register_parameter(NAME_OF(weight), gnn::tensor<arch>(indim, outdim))),
+       bias(register_parameter(NAME_OF(bias), nullptr /*gnn::TensorBase<arch>(1, outdim))*/)),
        den_layer(register_module(NAME_OF(den_layer), Dense(4))) {} 
 
 

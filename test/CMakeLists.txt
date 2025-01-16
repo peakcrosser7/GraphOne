@@ -17,7 +17,11 @@ add_executable(json_model_test json_model_test.cpp)
 add_executable(refl_test refl_test.cpp)
 
 add_executable(onnx_test onnx_test.cpp)
-target_link_libraries(onnx_test onnx)
+target_link_libraries(onnx_test lib3_onnx)
 
 add_executable(onnx_model_test onnx_model_test.cpp)
-target_link_libraries(onnx_model_test onnx)
+target_link_libraries(onnx_model_test lib3_onnx)
+
+add_cuda_exec(spmm_cusparse_test spmm_cusparse_test.cu LIB cusparse)
+
+add_cuda_exec(gemm_test gemm_test.cu)

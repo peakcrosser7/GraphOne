@@ -4,9 +4,9 @@
 #include "nlohmann/json.hpp"
 
 #include "GraphOne/type.hpp"
-#include "GraphOne/gnn/module.h"
-#include "GraphOne/gnn/build.h"
-#include "GraphOne/utils/refl.hpp"
+#include "GraphOne/domain/gnn/module.h"
+#include "GraphOne/domain/gnn/build.h"
+// #include "GraphOne/utils/refl.hpp"
 
 using namespace std;
 using namespace graph_one;
@@ -24,9 +24,9 @@ private:
 public:
     GraphConvolutionImpl(int in_dim, int out_dim, bool use_bias=true)
     : Module(), in_features(in_dim), out_features(out_dim),
-      weight(register_parameter(NAME_OF(weight), gnn::tensor_t<arch>(in_dim, out_dim))) {
+      weight(register_parameter(NAME_OF(weight), gnn::tensor<arch>(in_dim, out_dim))) {
         if (use_bias) {
-            bias = register_parameter(NAME_OF(bias), gnn::tensor_t<arch>(1, out_dim));
+            bias = register_parameter(NAME_OF(bias), gnn::tensor<arch>(1, out_dim));
         } else {
             bias = register_parameter(NAME_OF(bias), nullptr);
         }

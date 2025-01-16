@@ -36,6 +36,19 @@ public:
     GcEngine(comp_t &comp, frontier_t& frontier)
       : bast_t(comp), frontier_(frontier) {}
 };
+
+
+template <typename comp_t>
+class GnnEngine: public BaseEngine<comp_t> {
+protected:
+    using graph_type = typename comp_t::graph_type;
+    using hstatus_type = typename comp_t::hstatus_type;
+    using dstatus_type = typename comp_t::dstatus_type;
+    using bast_t = BaseEngine<comp_t>;
+
+public: 
+    using bast_t::BaseEngine;
 };
+
     
 } // namespace graph_one

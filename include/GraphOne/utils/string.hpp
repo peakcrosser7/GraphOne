@@ -123,7 +123,7 @@ std::string HashmapToString(const std::unordered_map<K, V> &hashmap,
                         STR_FUNC str_func = ToString<std::pair<K,V>>) {
     std::string str = "[";
     size_t sz = hashmap.size();
-    for (const auto& p: hashmap) {
+    for (const auto& <p>: hashmap) {
         str += str_func(p);
         if (--sz != 0) {
             str += ",";
