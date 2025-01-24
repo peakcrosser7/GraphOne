@@ -1,4 +1,6 @@
 
+#include <iostream>
+
 #include "CLI11/CLI11.hpp"
 
 #include "graph_one/graph_one.h"
@@ -49,6 +51,8 @@ int main(int argc, char *argv[]) {
     GraphX g = load_graph(input_graph, kCUDA);
 
     Tensor ranks = pr(g, alpha, eps);
+
+    std::cout << "PageRank: " << ranks << std::endl;
 
     return 0;
 }

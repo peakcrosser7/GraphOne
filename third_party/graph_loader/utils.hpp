@@ -77,8 +77,8 @@ StrToNum(const char* str) {
 
     throw_if_exception(endptr == str, 
                       "StrToNum failed due to no digits were found, num_str=" + std::string(str));
-    throw_if_exception(errno != 0, 
-                       "StrToNum failed due to error occurred during conversion, num_str=" + std::string(str));
+    // throw_if_exception(errno != 0, 
+    //                    "StrToNum failed due to error occurred during conversion, num_str=" + std::string(str));
     throw_if_exception(value > std::numeric_limits<T>::max(),
                        "StrToNum failed due to result out of type T range, num_str=" + std::string(str));
     return static_cast<T>(value);

@@ -14,6 +14,6 @@
 
 #include "graph_one/functor.hpp"
 #include "graph_one/operator.cuh"
-#include "graph_one/forward.hpp"
+#include "graph_one/forward.h"
 
 #include "graph_one/torch_utils.hpp"

@@ -7,6 +7,7 @@
 
 #include "graph_one/graph.hpp"
 #include "graph_one/log.hpp"
+#include "graph_one/blas/spmv/gspmv.h"
 
 namespace graph_one {
 
@@ -37,14 +38,16 @@ torch::Tensor GraphForward(GraphX& g,
         spmat = g.adj();
     }
 
+    // replace values of spmat with edge_feat
     if (edge_feat.defined() && edge_feat.dim() == 1) {
         if (spmat.layout() == torch::kSparseCsr) {
             spmat = torch::sparse_csr_tensor(spmat.crow_indices(), spmat.col_indices(), 
-                edge_feat, spmat.sizes(), spmat.device());
+                edge_feat, spmat.sizes(), spmat.options());
         } else {
-            assert(false && "other spmat formats is not supported");
+            assert(false && "other spmat formats of spmat are not supported yet");
         }
 
+        // change edge_feat to empty tensor
         edge_feat = torch::Tensor{};
     }
     
@@ -53,19 +56,30 @@ torch::Tensor GraphForward(GraphX& g,
     auto& apply_func = functor.apply_func;
 
     torch::Tensor output;
-    if (vertex_feat.layout() == torch::kStrided) {
-        if (std::is_same_v<raw_type<decltype(construct_op)>, op::Mult>
-            && std::is_same_v<raw_type<decltype(gather_op)>, op::Add>
-            && !edge_feat.defined()) {
-            if (vertex_feat.dim() == 1) {
-                LOG_DEBUG("use torch::mv");
-                output = torch::mv(spmat, vertex_feat);
-            } else {
-                LOG_DEBUG("use torch::mm");
-                output = torch::mm(spmat, vertex_feat);
+    if (vertex_feat.layout() == torch::kStrided) {  // dense vertex_feat
+        if (!edge_feat.defined()) { // standard SpMV / SpMM
+            if (std::is_same_v<raw_type<decltype(construct_op)>, op::Mult>
+                && std::is_same_v<raw_type<decltype(gather_op)>, op::Add>) {
+                if (vertex_feat.dim() == 1) {
+                    LOG_DEBUG("use torch::mv");
+                    // output = torch::mv(spmat, vertex_feat);
+                    output = blas::GSpMV(spmat, vertex_feat, construct_op, gather_op);
+                } else {
+                    LOG_DEBUG("use torch::mm");
+                    output = torch::mm(spmat, vertex_feat);
+                }
+            } else {    // generalized SpMV / SpMM
+                if (vertex_feat.dim() == 1) {
+                    LOG_DEBUG("use GSpMV");
+                    output = blas::GSpMV(spmat, vertex_feat, construct_op, gather_op);
+                } else {
+                    // TODO
+                }
             }
+        } else {    // has vertex_feat
+            // TODO
         }
-    } else {
+    } else {    // sparse vertex_feat
         // TODO SpMSpV/SpGEMM
 
     }
