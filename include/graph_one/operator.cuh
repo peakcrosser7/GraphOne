@@ -8,13 +8,13 @@ struct Mult {
 
     template <typename T>
     __device__ __host__ __forceinline__
-    constexpr static T identity() {
+    T identity() const {
         return T(1);
     }
 
     template <typename T>
     __host__ __device__ __forceinline__
-    constexpr static T call(const T& lhs, const T& rhs) {
+    T operator() (const T& lhs, const T& rhs) const {
         return lhs * rhs;
     }
 };
@@ -24,13 +24,13 @@ struct Add {
 
     template <typename T>
     __device__ __host__ __forceinline__
-    constexpr static T identity() {
+    T identity() const {
         return T(0);
     }
 
     template <typename T>
     __host__ __device__ __forceinline__
-    constexpr static T call(const T& lhs, const T& rhs) {
+    T operator() (const T& lhs, const T& rhs) const {
         return lhs + rhs;
     }
 };

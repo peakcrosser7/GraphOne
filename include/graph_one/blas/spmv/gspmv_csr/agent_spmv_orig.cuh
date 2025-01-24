@@ -99,12 +99,35 @@ struct AgentSpmvPolicy {
 // vec_y_value_t functor_t::combine(const mat_value_t& nonezero, const vec_x_value_t& x)
 // vec_y_value_t functor_t::reduce(const vec_y_value_t& lhs, const vec_y_value_t& rhs);
 template <
+    typename        combine_t,            ///< Functor for combining matrix and vector values
+    typename        reduce_t,             ///< Functor for reducing vector values
     typename        index_t,              ///< Matrix and vector value type
     typename        offset_t,             ///< Signed integer type for sequence offsets
     typename        mat_value_t,
     typename        vec_x_value_t,
     typename        vec_y_value_t>
 struct SpmvParams {
+    SpmvParams(mat_value_t*      d_values,
+               offset_t*         d_row_end_offsets,
+               index_t*          d_column_indices,
+               vec_x_value_t*    d_vector_x,
+               vec_y_value_t*    d_vector_y,
+               index_t           num_rows,
+               index_t           num_cols,
+               offset_t          num_nonzeros,
+               const combine_t&  combine_op,
+               const reduce_t&   reduce_op) 
+               : d_values(d_values),
+                 d_row_end_offsets(d_row_end_offsets),
+                 d_column_indices(d_column_indices),
+                 d_vector_x(d_vector_x),
+                 d_vector_y(d_vector_y),
+                 num_rows(num_rows),
+                 num_cols(num_cols),
+                 num_nonzeros(num_nonzeros),
+                 combine_op(combine_op),
+                 reduce_op(reduce_op) {}
+
     mat_value_t*      d_values;            ///< Pointer to the array of \p num_nonzeros values of the corresponding nonzero elements of matrix <b>A</b>.
     offset_t*         d_row_end_offsets;   ///< Pointer to the array of \p m offsets demarcating the end of every row in \p d_column_indices and \p d_values
     index_t*          d_column_indices;    ///< Pointer to the array of \p num_nonzeros column-indices of the corresponding nonzero elements of matrix <b>A</b>.  (Indices are zero-valued.)
@@ -113,15 +136,17 @@ struct SpmvParams {
     index_t           num_rows;            ///< Number of rows of matrix <b>A</b>.
     index_t           num_cols;            ///< Number of columns of matrix <b>A</b>.
     offset_t          num_nonzeros;        ///< Number of nonzero elements of matrix <b>A</b>.
+    const combine_t&  combine_op;          ///< Functor for combining matrix and vector values
+    const reduce_t&   reduce_op;           ///< Functor for reducing vector values
 };
 
-template <typename functor_t, typename T>
-struct ReduceWrapper {
-    __host__ __device__ __forceinline__ 
-    T operator()(const T &a, const T &b) const {
-        return functor_t::reduce(a, b);
-    }
-};
+// template <typename functor_t, typename T>
+// struct ReduceWrapper {
+//     __host__ __device__ __forceinline__ 
+//     T operator()(const T &a, const T &b) const {
+//         return functor_t::reduce(a, b);
+//     }
+// };
 
 /**
  * \brief AgentSpmv implements a stateful abstraction of CUDA thread blocks for participating in device-wide SpMV.
@@ -133,7 +158,8 @@ template <
     typename        mat_value_t,
     typename        vec_x_value_t,
     typename        vec_y_value_t,
-    typename        functor_t,
+    typename        combine_t,
+    typename        reduce_t,
     int             PTX_ARCH = CUB_PTX_ARCH>    ///< PTX compute capability
 struct AgentSpmv
 {
@@ -188,7 +214,7 @@ struct AgentSpmv
     using KeyValuePairT = cub::KeyValuePair<offset_t, vec_y_value_t>;
 
     // Reduce-value-by-segment scan operator
-    using ReduceBySegmentOpT = cub::ReduceByKeyOp<ReduceWrapper<functor_t, vec_y_value_t>>;
+    using ReduceBySegmentOpT = cub::ReduceByKeyOp<reduce_t>;
 
     // BlockReduce specialization
     using BlockReduceT = cub::BlockReduce<
@@ -257,7 +283,9 @@ struct AgentSpmv
 
     _TempStorage&                   temp_storage;         /// Reference to temp_storage
 
-    SpmvParams<index_t, 
+    SpmvParams<combine_t,
+               reduce_t,
+               index_t, 
                offset_t, 
                mat_value_t, 
                vec_x_value_t,
@@ -279,7 +307,10 @@ struct AgentSpmv
      */
     __device__ __forceinline__ AgentSpmv(
         TempStorage&                    temp_storage,           ///< Reference to temp_storage
-        SpmvParams<index_t, 
+        SpmvParams<
+               combine_t,
+               reduce_t,
+               index_t, 
                offset_t, 
                mat_value_t, 
                vec_x_value_t,
@@ -341,13 +372,16 @@ struct AgentSpmv
 
         __syncthreads();            // Perf-sync
 
+        const combine_t&       combine_op = spmv_params.combine_op;
+        const reduce_t&        reduce_op  = spmv_params.reduce_op;
+
         // Compute the thread's merge path segment
         // 线程合并路径的当前坐标
         CoordinateT             thread_current_coord = thread_start_coord;
         // 线程分片每个合并路径元素的(行偏移,点乘结果)键值对
         KeyValuePairT           scan_segment[ITEMS_PER_THREAD];
         // 非零元点乘结果的累加值
-        vec_y_value_t           running_total = functor_t::initialize();
+        vec_y_value_t           running_total = reduce_op.template identity<vec_y_value_t>();
 
         #pragma unroll
         for (int ITEM = 0; ITEM < ITEMS_PER_THREAD; ++ITEM) {
@@ -362,7 +396,7 @@ struct AgentSpmv
             vec_x_value_t  vector_value        = wd_vector_x[column_idx];
 
             // 非零元点乘结果
-            vec_y_value_t  nonzero             = functor_t::combine(value, vector_value);
+            vec_y_value_t  nonzero             = combine_op(value, vector_value);
 
             offset_t       row_end_offset      = s_tile_row_end_offsets[thread_current_coord.x];
 
@@ -371,7 +405,7 @@ struct AgentSpmv
                 // 列索引更小,消耗列索引数组(y轴)
 
                 // 累加矩阵该行的非零元点乘结果
-                running_total = functor_t::reduce(running_total, nonzero);
+                running_total = reduce_op(running_total, nonzero);
                 // 合并路径元素的value为非零元累加结果
                 scan_segment[ITEM].value    = running_total;
                 // 合并路径元素的key为线程块分片行数
@@ -386,7 +420,7 @@ struct AgentSpmv
                 // 合并路径元素的key为行偏移(矩阵该行最后一个非零元)
                 scan_segment[ITEM].key      = thread_current_coord.x;
                 // 重置矩阵该行的累加结果
-                running_total               = functor_t::initialize();
+                running_total               = reduce_op.template identity<vec_y_value_t>();
                 ++thread_current_coord.x;
             }
         }
@@ -427,7 +461,7 @@ struct AgentSpmv
                     if (scan_item.key == scan_segment[ITEM].key) {
                         // 将上一分片该行的累加结果记录到当前元素中
                         // 当前元素一定是该行的最后一个元素,因此只会累加一次
-                        scan_segment[ITEM].value = functor_t::reduce(scan_item.value, scan_segment[ITEM].value);
+                        scan_segment[ITEM].value = reduce_op(scan_item.value, scan_segment[ITEM].value);
                     }
 
                     // Set the output vector element
@@ -455,6 +489,9 @@ struct AgentSpmv
         CoordinateT     tile_end_coord,
         cub::Int2Type<false> is_direct_load)     ///< Marker type indicating whether to load nonzeros directly during path-discovery or beforehand in batch
     {
+        const combine_t&       combine_op = spmv_params.combine_op;
+        const reduce_t&        reduce_op  = spmv_params.reduce_op;
+        
         // 线程块分片包含的行数
         offset_t         tile_num_rows           = tile_end_coord.x - tile_start_coord.x;
         // 线程块分片包含的非零元数
@@ -490,7 +527,7 @@ struct AgentSpmv
                 // 向量X对应的元素
                 vec_x_value_t  vector_value            = wd_vector_x[column_idx];
                 // 计算SpMV的元素相乘
-                vec_y_value_t  nonzero                 = functor_t::combine(value, vector_value);
+                vec_y_value_t  nonzero                 = combine_op(value, vector_value);
 
                 // 记录非零元点乘结果到共享内存
                 *s    = nonzero;
@@ -516,7 +553,7 @@ struct AgentSpmv
                 vec_x_value_t  vector_value          = wd_vector_x[column_idx];
 
                 // 计算SpMV非零元相乘
-                vec_y_value_t  nonzero               = functor_t::combine(value, vector_value);
+                vec_y_value_t  nonzero               = combine_op(value, vector_value);
 
                 // 记录非零元点乘结果到共享内存
                 s_tile_nonzeros[nonzero_idx]         = nonzero;
@@ -558,7 +595,7 @@ struct AgentSpmv
         // 线程分片每个合并路径元素的(行偏移,点乘结果)键值对
         KeyValuePairT   scan_segment[ITEMS_PER_THREAD];
         // 非零元点乘结果的累加值
-        vec_y_value_t   running_total = functor_t::initialize();
+        vec_y_value_t   running_total = reduce_op.template identity<vec_y_value_t>();
 
         // 线程合并路径当前坐标的终止行偏移
         offset_t       row_end_offset  = s_tile_row_end_offsets[thread_current_coord.x];
@@ -575,7 +612,7 @@ struct AgentSpmv
                 // 合并路径元素的value为非零元点乘结果
                 scan_segment[ITEM].value    = nonzero;
                 // 累加矩阵该行的非零元点乘结果
-                running_total               = functor_t::reduce(running_total, nonzero);
+                running_total               = reduce_op(running_total, nonzero);
                 ++thread_current_coord.y;
                 // 更新非零元点乘结果
                 nonzero                     = s_tile_nonzeros[thread_current_coord.y];
@@ -584,9 +621,9 @@ struct AgentSpmv
                 // 行偏移更小,消耗行偏移数组(x轴)
 
                 // 合并路径元素的value为0
-                scan_segment[ITEM].value    = functor_t::initialize();
+                scan_segment[ITEM].value    = reduce_op.template identity<vec_y_value_t>();
                 // 重置矩阵该行的累加结果
-                running_total               = functor_t::initialize();
+                running_total               = reduce_op.template identity<vec_y_value_t>();
                 ++thread_current_coord.x;
                 // 更新终止行偏移
                 row_end_offset              = s_tile_row_end_offsets[thread_current_coord.x];
@@ -619,7 +656,7 @@ struct AgentSpmv
         // 线程0的前缀和(上一线程分片)行偏移和累加结果重置
         if (threadIdx.x == 0) {
             scan_item.key = thread_start_coord.x;
-            scan_item.value = functor_t::initialize();
+            scan_item.value = reduce_op.template identity<vec_y_value_t>();
         }
 
         // 线程块分片包含多行,记录完整行的累加结果
@@ -638,7 +675,7 @@ struct AgentSpmv
             } else {    // 上一线程的线程分片的最后一行与该线程的线程分片的第一行相同(有跨线程分片的矩阵行)
                 // 将上一分片该行的累加结果记录到本行首元素中 - 相当于线程分片的fixup
                 // 因为前面使用的是非包含前缀和ExclusiveScan,不会包含本线程的线程分片
-                scan_segment[0].value = functor_t::reduce(scan_segment[0].value, scan_item.value);
+                scan_segment[0].value = reduce_op(scan_segment[0].value, scan_item.value);
             }
 
             #pragma unroll
@@ -648,7 +685,7 @@ struct AgentSpmv
                     s_partials[scan_segment[ITEM - 1].key] = scan_segment[ITEM - 1].value;
                 } else {    // 两个元素对应矩阵同一行
                     // 将线程分片同一行的结果累加
-                    scan_segment[ITEM].value = functor_t::reduce(scan_segment[ITEM].value, scan_segment[ITEM - 1].value);
+                    scan_segment[ITEM].value = reduce_op(scan_segment[ITEM].value, scan_segment[ITEM - 1].value);
                 }
             }
 
@@ -733,7 +770,7 @@ struct AgentSpmv
                 // on the validity of the results, since this only affects the
                 // carry-over from last tile in the input.
                 tile_carry.key = spmv_params.num_rows - 1;
-                tile_carry.value = functor_t::initialize() ;
+                tile_carry.value = spmv_params.reduce_op.template identity<vec_y_value_t>();
             };
             // 记录该线程块分片的最后一行的行偏移和累加结果
             d_tile_carry_pairs[tile_idx]    = tile_carry;

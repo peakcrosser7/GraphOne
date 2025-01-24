@@ -72,9 +72,12 @@ template <
     typename        mat_value_t,
     typename        vec_x_value_t,
     typename        vec_y_value_t,
-    typename        functor_t>
+    typename        combine_t,
+    typename        reduce_t>
 __global__ void DeviceSpmv1ColKernel(
-    SpmvParams<index_t, 
+    SpmvParams<combine_t,
+               reduce_t,
+               index_t, 
                offset_t, 
                mat_value_t, 
                vec_x_value_t,
@@ -85,6 +88,7 @@ __global__ void DeviceSpmv1ColKernel(
         vec_x_value_t, 
         index_t>;
     using SpmvParamsT = SpmvParams<
+        combine_t, reduce_t,
         index_t, offset_t, 
         mat_value_t, vec_x_value_t, vec_y_value_t>;
 
@@ -96,10 +100,10 @@ __global__ void DeviceSpmv1ColKernel(
         offset_t     end_nonzero_idx = spmv_params.d_row_end_offsets[row_idx];
         offset_t     nonzero_idx = spmv_params.d_row_end_offsets[row_idx - 1];
 
-        vec_y_value_t value = functor_t::initialize();
+        vec_y_value_t value = spmv_params.reduce_op.template identity<vec_y_value_t>();
         if (end_nonzero_idx != nonzero_idx) {
-            value = functor_t::reduce(value, 
-                functor_t::combine(spmv_params.d_values[nonzero_idx], 
+            value = spmv_params.reduce_op(value, 
+                spmv_params.combine_op(spmv_params.d_values[nonzero_idx], 
                         wrapped_vector_x[spmv_params.d_column_indices[nonzero_idx]]));
         }
 
@@ -168,17 +172,20 @@ template <
     typename        mat_value_t,
     typename        vec_x_value_t,
     typename        vec_y_value_t,
-    typename        functor_t,
+    typename        combine_t,
+    typename        reduce_t,
     typename        ScanTileStateT,             ///< Tile status interface type
     typename        CoordinateT                 ///< Merge path coordinate type
 >
 __launch_bounds__ (int(SpmvPolicyT::BLOCK_THREADS))
 __global__ void DeviceSpmvKernel(
-    SpmvParams<index_t, 
+    SpmvParams<combine_t,
+               reduce_t,
+               index_t, 
                offset_t, 
                mat_value_t, 
                vec_x_value_t,
-               vec_y_value_t>                       spmv_params,                ///< [in] SpMV input parameter bundle
+               vec_y_value_t>                   spmv_params,                ///< [in] SpMV input parameter bundle
     CoordinateT*                                d_tile_coordinates,         ///< [in] Pointer to the temporary array of tile starting coordinates
     cub::KeyValuePair<offset_t, vec_y_value_t>* d_tile_carry_pairs,         ///< [out] Pointer to the temporary array carry-out dot product row-ids, one per block
     int                                         num_tiles,                  ///< [in] Number of merge tiles
@@ -187,9 +194,9 @@ __global__ void DeviceSpmvKernel(
 {
     // Spmv agent type specialization
     typedef AgentSpmv<SpmvPolicyT,
-            index_t, offset_t, 
-            mat_value_t, vec_x_value_t, vec_y_value_t, 
-            functor_t>
+                      index_t, offset_t, 
+                      mat_value_t, vec_x_value_t, vec_y_value_t, 
+                      combine_t, reduce_t>
         AgentSpmvT;
 
     // Shared memory for AgentSpmv
@@ -214,16 +221,17 @@ template <
     typename    AggregatesOutputIteratorT,      ///< Random-access output iterator type for values
     typename    offset_t,                        ///< Signed integer type for global offsets
     typename    ScanTileStateT,                 ///< Tile status interface type
-    typename    functor_t>
+    typename    reduce_t>                       ///< Reduce functor type
 __launch_bounds__ (int(AgentSegmentFixupPolicyT::BLOCK_THREADS))
 __global__ void DeviceSegmentFixupKernel(
+    const reduce_t&             reduce_op,          ///< [in] Reduce functor
     KeyValuePairT*              d_pairs_in,         ///< [in] Pointer to the array carry-out dot product row-ids, one per spmv block
     AggregatesOutputIteratorT   d_aggregates_out,   ///< [in,out] Output value aggregates
     offset_t                    num_items,          ///< [in] Total number of items to select from
     offset_t                    num_tiles,          ///< [in] Total number of tiles for the entire problem
     ScanTileStateT              tile_state)         ///< [in] Tile status interface
 {
-    using ReduceT = ReduceWrapper<functor_t, typename KeyValuePairT::Value>;
+    // using ReduceT = ReduceWrapper<functor_t, typename KeyValuePairT::Value>;
 
     // Thread block type for reducing tiles of value segments
     using AgentSegmentFixupT = AgentSegmentFixup<
@@ -231,14 +239,14 @@ __global__ void DeviceSegmentFixupKernel(
             KeyValuePairT*,
             AggregatesOutputIteratorT,
             cub::Equality,
-            ReduceT,
+            reduce_t,
             offset_t>;
 
     // Shared memory for AgentSegmentFixup
     __shared__ typename AgentSegmentFixupT::TempStorage temp_storage;
 
     // Process tiles
-    AgentSegmentFixupT(temp_storage, d_pairs_in, d_aggregates_out, cub::Equality(), ReduceT()).ConsumeRange(
+    AgentSegmentFixupT(temp_storage, d_pairs_in, d_aggregates_out, cub::Equality(), reduce_op).ConsumeRange(
         num_items,
         num_tiles,
         tile_state);
@@ -258,7 +266,8 @@ template <
     typename        mat_value_t,
     typename        vec_x_value_t,
     typename        vec_y_value_t,
-    typename        functor_t>
+    typename        combine_t,
+    typename        reduce_t>
 struct DispatchSpmv {
     //---------------------------------------------------------------------
     // Constants and Types
@@ -269,7 +278,9 @@ struct DispatchSpmv {
     };
 
     // SpmvParams bundle type
-    typedef SpmvParams<index_t, 
+    typedef SpmvParams<combine_t,
+                       reduce_t,
+                       index_t, 
                        offset_t, 
                        mat_value_t, 
                        vec_x_value_t,
@@ -759,6 +770,7 @@ struct DispatchSpmv {
 
                 // Invoke segment_fixup_kernel
                 segment_fixup_kernel<<<segment_fixup_grid_size, segment_fixup_config.block_threads, 0, stream>>>(
+                    spmv_params.reduce_op,
                     d_tile_carry_pairs,
                     spmv_params.d_vector_y,
                     num_merge_tiles,
@@ -802,10 +814,10 @@ struct DispatchSpmv {
 
             if (CubDebug(error = Dispatch(
                 d_temp_storage, temp_storage_bytes, spmv_params, stream, debug_synchronous,
-                DeviceSpmv1ColKernel<PtxSpmvPolicyT, index_t, offset_t, mat_value_t, vec_x_value_t, vec_y_value_t, functor_t>,
+                DeviceSpmv1ColKernel<PtxSpmvPolicyT, index_t, offset_t, mat_value_t, vec_x_value_t, vec_y_value_t, combine_t, reduce_t>,
                 DeviceSpmvSearchKernel<PtxSpmvPolicyT, offset_t, CoordinateT, SpmvParamsT>,
-                DeviceSpmvKernel<PtxSpmvPolicyT, index_t, offset_t, mat_value_t, vec_x_value_t, vec_y_value_t, functor_t, ScanTileStateT, CoordinateT>,
-                DeviceSegmentFixupKernel<PtxSegmentFixupPolicy, KeyValuePairT, vec_y_value_t*, offset_t, ScanTileStateT, functor_t>,
+                DeviceSpmvKernel<PtxSpmvPolicyT, index_t, offset_t, mat_value_t, vec_x_value_t, vec_y_value_t, combine_t, reduce_t, ScanTileStateT, CoordinateT>,
+                DeviceSegmentFixupKernel<PtxSegmentFixupPolicy, KeyValuePairT, vec_y_value_t*, offset_t, ScanTileStateT, reduce_t>,
                 spmv_config, segment_fixup_config))) break;
         } while (0);
 

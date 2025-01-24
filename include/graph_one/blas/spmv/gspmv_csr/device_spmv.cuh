@@ -131,7 +131,7 @@ struct DeviceSpmv
      *
      * \tparam ValueT       <b>[inferred]</b> Matrix and vector value type (e.g., /p float, /p double, etc.)
      */
-    template <typename functor_t,
+    template <typename combine_t, typename reduce_t,
               typename index_t, typename offset_t, typename mat_value_t,
               typename vec_x_value_t, typename vec_y_value_t>
         CUB_RUNTIME_FUNCTION
@@ -146,29 +146,29 @@ struct DeviceSpmv
             index_t             num_rows,                           ///< [in] number of rows of matrix <b>A</b>.
             index_t             num_cols,                           ///< [in] number of columns of matrix <b>A</b>.
             offset_t            num_nonzeros,                       ///< [in] number of nonzero elements of matrix <b>A</b>.
+            combine_t           combine_op,                         ///< [in]  Binary operator to apply between matrix values and vector values.
+            reduce_t            reduce_op,                          ///< [in]  Binary operator to apply between vector values.
             cudaStream_t        stream                  = 0,        ///< [in] <b>[optional]</b> CUDA stream to launch kernels within.  Default is stream<sub>0</sub>.
             bool                debug_synchronous       = false)    ///< [in] <b>[optional]</b> Whether or not to synchronize the stream after every kernel launch to check for errors.  May cause significant slowdown.  Default is \p false.
     {
-        SpmvParams<index_t, 
-                offset_t, 
-                mat_value_t, 
-                vec_x_value_t,
-                vec_y_value_t> spmv_params;
-        spmv_params.d_values             = d_values;
-        spmv_params.d_row_end_offsets    = d_row_offsets + 1;
-        spmv_params.d_column_indices     = d_column_indices;
-        spmv_params.d_vector_x           = d_vector_x;
-        spmv_params.d_vector_y           = d_vector_y;
-        spmv_params.num_rows             = num_rows;
-        spmv_params.num_cols             = num_cols;
-        spmv_params.num_nonzeros         = num_nonzeros;
+        SpmvParams<combine_t,
+                   reduce_t,
+                   index_t, 
+                   offset_t, 
+                   mat_value_t, 
+                   vec_x_value_t,
+                   vec_y_value_t> spmv_params(d_values, d_row_offsets + 1, d_column_indices, 
+                                              d_vector_x, d_vector_y, 
+                                              num_rows, num_cols, num_nonzeros, 
+                                              combine_op, reduce_op);
 
         return DispatchSpmv<index_t, 
                 offset_t, 
                 mat_value_t, 
                 vec_x_value_t,
                 vec_y_value_t, 
-                functor_t>::Dispatch(
+                combine_t,
+                reduce_t>::Dispatch(
             d_temp_storage,
             temp_storage_bytes,
             spmv_params,

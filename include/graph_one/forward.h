@@ -62,15 +62,15 @@ torch::Tensor GraphForward(GraphX& g,
                 && std::is_same_v<raw_type<decltype(gather_op)>, op::Add>) {
                 if (vertex_feat.dim() == 1) {
                     LOG_DEBUG("use torch::mv");
-                    // output = torch::mv(spmat, vertex_feat);
-                    output = blas::GSpMV(spmat, vertex_feat, construct_op, gather_op);
+                    output = torch::mv(spmat, vertex_feat);
+                    // output = blas::GSpMV(spmat, vertex_feat, construct_op, gather_op);
                 } else {
                     LOG_DEBUG("use torch::mm");
                     output = torch::mm(spmat, vertex_feat);
                 }
             } else {    // generalized SpMV / SpMM
                 if (vertex_feat.dim() == 1) {
-                    LOG_DEBUG("use GSpMV");
+                    LOG_DEBUG("use blas::GSpMV");
                     output = blas::GSpMV(spmat, vertex_feat, construct_op, gather_op);
                 } else {
                     // TODO
