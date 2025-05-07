@@ -17,6 +17,13 @@
 
 namespace graph_one::blas {
 
+namespace {
+    cub::CachingDeviceAllocator& get_allocator() {
+        static cub::CachingDeviceAllocator allocator;
+        return allocator;
+    }
+}
+
 /// cub merge-based Generalized CsrMV with independent code
 template <typename index_t, typename offset_t, typename mat_value_t,
           typename vec_x_value_t, typename vec_y_value_t,
@@ -32,7 +39,7 @@ void GSpMV_CSR_merge_based(
     void *d_temp_storage = NULL;
 
     // Caching allocator for device memory
-    cub::CachingDeviceAllocator  allocator(true);      
+    cub::CachingDeviceAllocator& allocator = get_allocator();      
 
     // Get amount of temporary storage needed
     CubDebugExit(DeviceSpmv::CsrMV(d_temp_storage, temp_storage_bytes, 
@@ -55,6 +62,8 @@ void GSpMV_CSR_merge_based(
                                    y, n_rows, n_cols, nnz,
                                    combine_op, reduce_op,
                                    (cudaStream_t)0, false));
+
+    CubDebugExit(allocator.DeviceFree(d_temp_storage));
 }
 
 } // namespace graph_one::blas

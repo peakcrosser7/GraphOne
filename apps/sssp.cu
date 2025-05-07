@@ -1,4 +1,3 @@
-#include <iostream>
 #include <chrono>
 
 #include "CLI11/CLI11.hpp"
@@ -10,6 +9,7 @@ using namespace graph_one;
 using dist_t = float;
 
 Tensor sssp(GraphX& g, vid_t src) {
+
     vid_t num_v = g.num_vertices();
     Device device = g.device();
 
@@ -26,13 +26,12 @@ Tensor sssp(GraphX& g, vid_t src) {
     bool any_active = true;
     for (int iter = 1; any_active; ++iter) {
         Tensor result = GraphForward(g, active_dists, {}, functor);
-        
+
         Tensor mask = result < dists;
         dists = torch::where(mask, result, dists);
         active_dists = torch::where(mask, result, active_dists);
 
         any_active = torch::any(mask).item<bool>();
-        // printx("Iteration: ", iter, ", Active vertices: ", any_active);
     }
 
     return dists;
@@ -51,19 +50,16 @@ int main(int argc, char *argv[]) {
     CLI11_PARSE(app, argc, argv);
 
     GraphX g = load_graph(input_graph, kCUDA);
-    Tensor dists = sssp(g, src);
 
     auto start = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < 1; ++i) {
-        dists = sssp(g, src);
-    }
+    Tensor dists = sssp(g, src);
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start) / 10;
 
     printx("Elapsed time: ", duration.count(), " ms");
 
     dists = dists.to(kCPU);
-    std::cout << "SSSP: \n";
+    printx("SSSP:");
     for (vid_t i = 0; i < dists.size(0); ++i) {
         printf("%d-%f\n", i, dists[i].item<dist_t>());
     }
