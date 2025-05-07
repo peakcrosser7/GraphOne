@@ -2,7 +2,7 @@
 
 #include <torch/torch.h>
 
-namespace graph_one{
+namespace graph_one {
 
 using Tensor = torch::Tensor;
 using Device = torch::Device;

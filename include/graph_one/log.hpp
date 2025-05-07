@@ -20,7 +20,7 @@ void log(args_t&&... args) {
 
 template <typename... args_t>
 void printx(args_t&&... args) {
-    (std::cout << ... << print_helper(args)) << std::endl;
+    (std::cout << ... << args) << std::endl;
 } 
 
 template <typename... args_t>

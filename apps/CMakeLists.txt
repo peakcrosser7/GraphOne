@@ -4,6 +4,12 @@ set_target_properties(pr PROPERTIES
     CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES}
 )
 
+add_executable(sssp sssp.cu)
+target_link_libraries(sssp ${TORCH_LIBRARIES})
+set_target_properties(sssp PROPERTIES 
+    CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES}
+)
+
 add_executable(gcn gcn.cu)
 target_link_libraries(gcn ${TORCH_LIBRARIES})
 set_target_properties(gcn PROPERTIES 
