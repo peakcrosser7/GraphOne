@@ -13,10 +13,10 @@ namespace graph_one {
 class GraphX {
 public:
 
-    GraphX(torch::Tensor adj, torch::Tensor adj_t, torch::Device device) 
+    GraphX(torch::Tensor adj, torch::Tensor adj_trans, torch::Device device) 
         : device_(device) {
         assert(adj.layout() == torch::kSparseCsr);
-        assert(!adj_t.defined() || adj_t.layout() == torch::kSparseCsr);
+        assert(!adj_trans.defined() || adj_trans.layout() == torch::kSparseCsr);
 
         num_vertices_ = adj.size(0);
         num_edges_ = adj._nnz();
@@ -24,10 +24,10 @@ public:
             ", device_=", device_);
 
         adj_ = adj.to(device);
-        adj_t_ = adj_t.to(device);
+        adj_trans_ = adj_trans.to(device);
     }
 
-    GraphX(torch::Tensor adj, torch::Tensor adj_t) : GraphX(adj, adj_t, adj.device()) {}
+    GraphX(torch::Tensor adj, torch::Tensor adj_trans) : GraphX(adj, adj_trans, adj.device()) {}
 
     vid_t num_vertices() const {
         return num_vertices_;
@@ -42,15 +42,15 @@ public:
     }
     
     GraphX to(torch::Device device) {
-        return GraphX(adj_, adj_t_, device);
+        return GraphX(adj_, adj_trans_, device);
     }
 
     torch::Tensor adj() const {
         return adj_;
     }
 
-    torch::Tensor adj_t() const {
-        return adj_t_;
+    torch::Tensor adj_trans() const {
+        return adj_trans_;
     }
 
     torch::Tensor outedge_weights() const {
@@ -58,7 +58,7 @@ public:
     }
 
     torch::Tensor inedge_weights() const {
-        return adj_t_.values();
+        return adj_trans_.values();
     }
 
     void set_outedge_weights(torch::Tensor outedge_weights) {
@@ -80,12 +80,12 @@ public:
             "edge_weights must be a strided tensor");
         TORCH_CHECK(inedge_weights.size(0) == num_edges_, 
             "edge_weights must have the same size as the number of edges in the graph");
-        adj_t_ = torch::sparse_csr_tensor(
-                adj_t_.crow_indices(),
-                adj_t_.col_indices(),
+        adj_trans_ = torch::sparse_csr_tensor(
+                adj_trans_.crow_indices(),
+                adj_trans_.col_indices(),
                 inedge_weights,
-                adj_t_.sizes(),
-                adj_t_.options()
+                adj_trans_.sizes(),
+                adj_trans_.options()
             );
     }
 
@@ -96,7 +96,7 @@ private:
     torch::Device device_;
 
     torch::Tensor adj_;
-    torch::Tensor adj_t_;
+    torch::Tensor adj_trans_;
 };
 
 

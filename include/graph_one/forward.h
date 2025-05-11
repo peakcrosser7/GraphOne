@@ -45,7 +45,7 @@ torch::Tensor GraphForward(GraphX& g,
 
     torch::Tensor spmat;
     if (opts.use_out_edges_) {
-        spmat = g.adj_t();
+        spmat = g.adj_trans();
     } else {
         spmat = g.adj();
     }

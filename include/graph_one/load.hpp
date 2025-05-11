@@ -59,10 +59,10 @@ GraphX LoadGraphFromTxt(const std::string& filepath, LoaderOpts& opts, torch::De
     torch::Tensor adj = coo.to_sparse_csr();
     torch::Tensor csc = coo.to_sparse_csc();
 
-    torch::Tensor adj_t = torch::sparse_csr_tensor(csc.ccol_indices(), csc.row_indices(), csc.values(), csc.sizes(),
+    torch::Tensor adj_trans = torch::sparse_csr_tensor(csc.ccol_indices(), csc.row_indices(), csc.values(), csc.sizes(),
         csc.dtype());
 
-    return GraphX(adj, adj_t, device);
+    return GraphX(adj, adj_trans, device);
 }
 
 template <typename value_t = float>

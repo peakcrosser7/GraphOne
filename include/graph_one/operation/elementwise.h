@@ -79,7 +79,7 @@ torch::Tensor GraphWise(const binary_t& binary_op, GraphX& g,
     if (opts.use_out_edges_) {
         spmat = g.adj();
     } else {
-        spmat = g.adj_t();
+        spmat = g.adj_trans();
     }
 
     TORCH_CHECK(spmat.layout() != torch::kStrided, "spmat must be Sparse tensor");
