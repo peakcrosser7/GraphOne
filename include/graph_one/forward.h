@@ -36,9 +36,9 @@ struct ForwardOpts {
 };
 
 template <typename functor_t>
-torch::Tensor GraphForward(GraphX& g, 
-                           torch::Tensor vertex_feat, torch::Tensor edge_feat,
-                           const functor_t& functor, const ForwardOpts& opts = {}) {
+torch::Tensor GraphForward(const functor_t& functor, GraphX& g, 
+                           torch::Tensor vertex_feat, torch::Tensor edge_feat = {},
+                           const ForwardOpts& opts = {}) {
 
     TORCH_CHECK(vertex_feat.size(0) == g.num_vertices(), "vertex_feat must have the same size as the number of vertices in the graph");
     TORCH_CHECK(!edge_feat.defined() || edge_feat.size(0) == g.num_edges(), "edge_feat must have the same size as the number of edges in the graph");

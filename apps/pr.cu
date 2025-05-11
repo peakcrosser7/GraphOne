@@ -22,7 +22,7 @@ Tensor pr(GraphX& g, float alpha, float eps) {
     for (int iter = 1; error > eps && iter <= 100; ++iter) {
         p_prev = p;
 
-        Tensor p_swap = GraphForward(g, p_prev, {}, functor);
+        Tensor p_swap = GraphForward(functor, g, p_prev);
 
         p = p_swap + (1.f - alpha) / num_v;
 

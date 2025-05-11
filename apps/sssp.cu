@@ -25,7 +25,7 @@ Tensor sssp(GraphX& g, vid_t src) {
 
     bool any_active = true;
     for (int iter = 1; any_active; ++iter) {
-        Tensor result = GraphForward(g, active_dists, {}, functor);
+        Tensor result = GraphForward(functor, g, active_dists);
 
         Tensor mask = result < dists;
         dists = torch::where(mask, result, dists);

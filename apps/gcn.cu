@@ -43,7 +43,7 @@ public:
 
         // Sparse matrix multiplication with adjacency matrix
         auto functor = make_functor(op::Mult{}, op::Add{});
-        Tensor output = GraphForward(g, support, {}, functor);
+        Tensor output = GraphForward(functor, g, support);
 
         // Add bias if it exists
         if (bias_.defined()) {
