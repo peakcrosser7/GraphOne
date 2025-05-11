@@ -47,7 +47,7 @@
 #include "thread_search.cuh"
 
 
-namespace graph_one::blas {
+namespace graph_one::cuda {
 
 // /// Optional outer namespace(s)
 // CUB_NS_PREFIX

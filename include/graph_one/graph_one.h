@@ -15,5 +15,7 @@
 #include "graph_one/functor.hpp"
 #include "graph_one/operator.cuh"
 #include "graph_one/forward.h"
+#include "graph_one/operation/reduce.h"
+#include "graph_one/operation/elementwise.h"
 
 #include "graph_one/torch_utils.hpp"

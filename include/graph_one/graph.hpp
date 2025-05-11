@@ -53,12 +53,40 @@ public:
         return adj_t_;
     }
 
-    torch::Tensor edge_weights() const {
+    torch::Tensor outedge_weights() const {
         return adj_.values();
     }
 
-    torch::Tensor edge_weights_t() const {
+    torch::Tensor inedge_weights() const {
         return adj_t_.values();
+    }
+
+    void set_outedge_weights(torch::Tensor outedge_weights) {
+        TORCH_CHECK(outedge_weights.layout() == torch::kStrided, 
+            "edge_weights must be a strided tensor");
+        TORCH_CHECK(outedge_weights.size(0) == num_edges_, 
+            "edge_weights must have the same size as the number of edges in the graph");
+        adj_ = torch::sparse_csr_tensor(
+                adj_.crow_indices(),
+                adj_.col_indices(),
+                outedge_weights,
+                adj_.sizes(),
+                adj_.options()
+            );
+    }
+
+    void set_inedge_weights(torch::Tensor inedge_weights) {
+        TORCH_CHECK(inedge_weights.layout() == torch::kStrided, 
+            "edge_weights must be a strided tensor");
+        TORCH_CHECK(inedge_weights.size(0) == num_edges_, 
+            "edge_weights must have the same size as the number of edges in the graph");
+        adj_t_ = torch::sparse_csr_tensor(
+                adj_t_.crow_indices(),
+                adj_t_.col_indices(),
+                inedge_weights,
+                adj_t_.sizes(),
+                adj_t_.options()
+            );
     }
 
 private:

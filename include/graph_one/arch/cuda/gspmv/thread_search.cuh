@@ -2,7 +2,7 @@
 
 #include <iterator>
 
-namespace graph_one::blas {
+namespace graph_one::cuda {
 
 /**
  * Computes the begin offsets into A and B for the specific diagonal

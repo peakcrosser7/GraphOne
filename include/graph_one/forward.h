@@ -20,7 +20,19 @@ using raw_type = typename std::remove_cv<typename std::remove_reference<T>::type
 }
 
 struct ForwardOpts {
-    bool src_to_dst = true;
+    bool use_out_edges_ = true;
+
+    ForwardOpts() = default;
+
+    ForwardOpts use_out_edges() {
+        use_out_edges_ = true;
+        return *this;
+    }
+
+    ForwardOpts use_in_edges() {
+        use_out_edges_ = false;
+        return *this;
+    }
 };
 
 template <typename functor_t>
@@ -28,11 +40,11 @@ torch::Tensor GraphForward(GraphX& g,
                            torch::Tensor vertex_feat, torch::Tensor edge_feat,
                            const functor_t& functor, const ForwardOpts& opts = {}) {
 
-    assert(vertex_feat.size(0) == g.num_vertices());
-    assert(!edge_feat.defined() || edge_feat.size(0) == g.num_edges());
+    TORCH_CHECK(vertex_feat.size(0) == g.num_vertices(), "vertex_feat must have the same size as the number of vertices in the graph");
+    TORCH_CHECK(!edge_feat.defined() || edge_feat.size(0) == g.num_edges(), "edge_feat must have the same size as the number of edges in the graph");
 
     torch::Tensor spmat;
-    if (opts.src_to_dst) {
+    if (opts.use_out_edges_) {
         spmat = g.adj_t();
     } else {
         spmat = g.adj();
@@ -44,7 +56,7 @@ torch::Tensor GraphForward(GraphX& g,
             spmat = torch::sparse_csr_tensor(spmat.crow_indices(), spmat.col_indices(), 
                 edge_feat, spmat.sizes(), spmat.options());
         } else {
-            assert(false && "other spmat formats of spmat are not supported yet");
+            TORCH_CHECK(false, "other spmat formats of spmat are not supported yet");
         }
 
         // change edge_feat to empty tensor
@@ -57,9 +69,9 @@ torch::Tensor GraphForward(GraphX& g,
 
     torch::Tensor output;
     if (vertex_feat.layout() == torch::kStrided) {  // dense vertex_feat
-        if (!edge_feat.defined()) { // standard SpMV / SpMM
+        if (!edge_feat.defined()) { 
             if (std::is_same_v<raw_type<decltype(construct_op)>, op::Mult>
-                && std::is_same_v<raw_type<decltype(gather_op)>, op::Add>) {
+                && std::is_same_v<raw_type<decltype(gather_op)>, op::Add>) {    // standard SpMV / SpMM
                 if (vertex_feat.dim() == 1) {
                     LOG_DEBUG("use torch::mv");
                     output = torch::mv(spmat, vertex_feat);

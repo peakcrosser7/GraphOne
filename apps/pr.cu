@@ -30,6 +30,8 @@ Tensor pr(GraphX& g, float alpha, float eps) {
         
         error = torch::sum(r * r).item<float>();
         error = std::sqrt(error);
+
+        LOG_DEBUG("PageRank Iteration: ", iter, " Error: ", error);
     }
 
     return p;
@@ -50,9 +52,26 @@ int main(int argc, char *argv[]) {
 
     GraphX g = load_graph(input_graph, kCUDA);
 
-    Tensor ranks = pr(g, alpha, eps);
+    Tensor new_inedge_weights = make_full<float>({g.num_edges()}, 1.f, g.device());
+    Tensor out_degrees = GraphReduce(op::Add{}, g, new_inedge_weights,
+                                     ReduceOpts().use_out_edges());
+    out_degrees = alpha / out_degrees;
+    new_inedge_weights = GraphWise(op::Mult{}, g, new_inedge_weights, out_degrees, 
+                                   ElementWiseOpts().use_in_edges().use_src_vertex());
+    g.set_inedge_weights(new_inedge_weights);
 
-    std::cout << "PageRank: " << ranks << std::endl;
+    auto start = std::chrono::high_resolution_clock::now();
+    Tensor ranks = pr(g, alpha, eps);
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start) / 10;
+
+    printx("Elapsed time: ", duration.count(), " ms");
+
+    ranks = ranks.to(kCPU);
+    printx("PageRank:");
+    for (vid_t i = 0; i < ranks.size(0); ++i) {
+        printf("%d-%f\n", i, ranks[i].item<float>());
+    }
 
     return 0;
 }

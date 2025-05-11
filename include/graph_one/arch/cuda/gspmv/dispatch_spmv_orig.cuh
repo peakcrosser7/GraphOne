@@ -54,7 +54,7 @@
 /// CUB namespace
 // namespace cub {
 
-namespace graph_one::blas {
+namespace graph_one::cuda {
 
 /******************************************************************************
  * SpMV kernel entry points
