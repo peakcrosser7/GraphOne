@@ -7,7 +7,7 @@
 
 #include "graph_one/graph.hpp"
 #include "graph_one/log.hpp"
-#include "graph_one/blas/spmv/gspmv.h"
+#include "graph_one/blas/gspmv.h"
 
 namespace graph_one {
 

@@ -11,6 +11,7 @@
 // use texture memory for vector X (get worse performance, not use in cub)
 // #define MERGE_USE_TEXTURE
 
+#include "graph_one/allocator.h"
 #include "graph_one/arch/cuda/utils.cuh"
 
 #include "./device_spmv.cuh"
@@ -28,7 +29,7 @@ void GSpMV_CSR_merge_based(
     const combine_t& combine_op, const reduce_t& reduce_op) {
 
     // Caching allocator for device memory
-    cub::CachingDeviceAllocator& allocator = utils::get_allocator();      
+    auto& allocator = MemAllocator::Get();      
 
     // Get amount of temporary storage needed
     size_t temp_storage_bytes = 0;
@@ -42,8 +43,7 @@ void GSpMV_CSR_merge_based(
                                    (cudaStream_t)0, false));
 
     // Allocate
-    void *d_temp_storage = nullptr;
-    CUDA_CHECK(allocator.DeviceAllocate(&d_temp_storage, temp_storage_bytes));
+    void *d_temp_storage = allocator.CudaAllocate(temp_storage_bytes);
 
     CUDA_CHECK(DeviceSpmv::CsrMV(d_temp_storage, temp_storage_bytes, 
                                    const_cast<mat_value_t *>(csr_values), 
@@ -54,7 +54,7 @@ void GSpMV_CSR_merge_based(
                                    combine_op, reduce_op,
                                    (cudaStream_t)0, false));
 
-    CUDA_CHECK(allocator.DeviceFree(d_temp_storage));
+    allocator.Free(d_temp_storage);
 }
 
 } // namespace graph_one::blas

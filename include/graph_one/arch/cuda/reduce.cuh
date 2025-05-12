@@ -3,6 +3,9 @@
 #include <cuda.h>
 #include <cub/device/device_segmented_reduce.cuh>
 
+#include "graph_one/allocator.h"
+#include "graph_one/arch/cuda/utils.cuh"
+
 namespace graph_one::cuda {
 
 template <typename index_t, typename offset_t, typename value_t, typename reduce_t>
@@ -16,14 +19,13 @@ void ReduceCSR(index_t n_rows, index_t n_cols, offset_t nnz,
         csr_values, output, n_rows, row_offsets, row_offsets + 1, op, op.template identity<value_t>()));
 
     // Caching allocator for device memory
-    cub::CachingDeviceAllocator& allocator = utils::get_allocator();  
-    void* d_temp_storage = nullptr;
-    CUDA_CHECK(allocator.DeviceAllocate(&d_temp_storage, temp_storage_bytes));
+    auto& allocator = MemAllocator::Get(); 
+    void* d_temp_storage = allocator.CudaAllocate(temp_storage_bytes);
 
     CUDA_CHECK(cub::DeviceSegmentedReduce::Reduce(d_temp_storage, temp_storage_bytes,
         csr_values, output, n_rows, row_offsets, row_offsets + 1, op, op.template identity<value_t>()));
     
-    CUDA_CHECK(allocator.DeviceFree(d_temp_storage));
+    allocator.Free(d_temp_storage);
 }
 
 
