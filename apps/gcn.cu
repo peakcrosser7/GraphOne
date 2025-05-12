@@ -1,5 +1,3 @@
-#include <string>
-
 #include "CLI11/CLI11.hpp"
 
 #include "graph_one/graph_one.h"
@@ -125,6 +123,14 @@ int main(int argc, char *argv[]) {
     Tensor feat = make_rand<float>({g.num_vertices(), nfeat}, device);
 
     Tensor output = model->forward(g, feat);
+
+    Tensor pred = torch::argmax(output, /*dim=*/1);
+    pred = pred.to(kCPU);
+
+    printx("GCN Prediction:");
+    for (vid_t i = 0; i < pred.size(0); ++i) {
+        printf("%d-%d\n", i, pred[i].item<int>());
+    }
 
     return 0;
 }
