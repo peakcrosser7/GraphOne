@@ -61,7 +61,7 @@ public:
         return adj_trans_.values();
     }
 
-    void set_outedge_weights(torch::Tensor outedge_weights) {
+    void set_outedge_weights(torch::Tensor outedge_weights, bool both = false) {
         TORCH_CHECK(outedge_weights.layout() == torch::kStrided, 
             "edge_weights must be a strided tensor");
         TORCH_CHECK(outedge_weights.size(0) == num_edges_, 
@@ -73,9 +73,19 @@ public:
                 adj_.sizes(),
                 adj_.options()
             );
+        if (both) {
+            torch::Tensor csc = adj_.to_sparse_csc();
+            adj_trans_ = torch::sparse_csr_tensor(
+                csc.ccol_indices(),
+                csc.row_indices(),
+                csc.values(),
+                csc.sizes(),
+                csc.options()
+            );
+        }
     }
 
-    void set_inedge_weights(torch::Tensor inedge_weights) {
+    void set_inedge_weights(torch::Tensor inedge_weights, bool both = false) {
         TORCH_CHECK(inedge_weights.layout() == torch::kStrided, 
             "edge_weights must be a strided tensor");
         TORCH_CHECK(inedge_weights.size(0) == num_edges_, 
@@ -87,6 +97,16 @@ public:
                 adj_trans_.sizes(),
                 adj_trans_.options()
             );
+        if (both) {
+            torch::Tensor csc = adj_trans_.to_sparse_csc();
+            adj_ = torch::sparse_csr_tensor(
+                csc.ccol_indices(),
+                csc.row_indices(),
+                csc.values(),
+                csc.sizes(),
+                csc.options()
+            );
+        }
     }
 
 private:

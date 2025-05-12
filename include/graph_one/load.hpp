@@ -70,6 +70,8 @@ GraphX load_graph(const std::string& filepath, torch::Device device = torch::kCP
     LoaderOpts opts;
     if (graph_loader::utils::StrEndWith(filepath, ".mtx")) {
         opts = graph_loader::OptsFactory::MatrixMarket();
+    } else {
+        LOG_ERROR("Unsupported graph file format: ", filepath);
     }
     return LoadGraphFromTxt<value_t>(filepath, opts, device);
 }
