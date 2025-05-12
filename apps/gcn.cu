@@ -18,12 +18,11 @@ public:
         if (bias) {
             bias_ = register_parameter("bias", torch::zeros({out_features}));
         }
-
-        // Reset parameters to uniform initialization
-        reset_parameters();
     }
 
     void reset_parameters() {
+        torch::NoGradGuard no_grad;
+
         // Compute standard deviation for uniform initialization
         double stdv = 1.0 / std::sqrt(weight_.size(1));
 
@@ -84,6 +83,11 @@ public:
         return torch::log_softmax(h, /*dim=*/1);
     }
 
+    void reset_parameters() {
+        gc1_->reset_parameters();
+        gc2_->reset_parameters();
+    }
+
 private:
     GCNLayer gc1_{nullptr};
     GCNLayer gc2_{nullptr};
@@ -93,6 +97,7 @@ TORCH_MODULE(GCN);
 
 int main(int argc, char *argv[]) {
     std::string input_graph;
+    std::string model_path;
 
     // GCN Parameters
     int nfeat = 96;
@@ -101,6 +106,7 @@ int main(int argc, char *argv[]) {
 
     CLI::App app;
     app.add_option("-i,--input_graph", input_graph, "input graph dataset file")->required();
+    app.add_option("-m,--model", model_path, "the model path to load");
     app.add_option("--nfeat", nfeat, "size of vertices' feature in GCN (default 96)");
     app.add_option("--ncls", nclass, "number of classes of each vertex in GCN (default 10)");
     CLI11_PARSE(app, argc, argv);    
@@ -109,6 +115,11 @@ int main(int argc, char *argv[]) {
     
     GraphX g = load_graph(input_graph, device);
     GCN model(nfeat, nhid, nclass);
+    if (!model_path.empty()) {
+        load_model(model, model_path);
+    } else {
+        model->reset_parameters();
+    }
     model->to(device);
 
     Tensor feat = make_rand<float>({g.num_vertices(), nfeat}, device);

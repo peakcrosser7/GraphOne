@@ -74,4 +74,14 @@ GraphX load_graph(const std::string& filepath, torch::Device device = torch::kCP
     return LoadGraphFromTxt<value_t>(filepath, opts, device);
 }
 
+template <typename model_t>
+void load_model(model_t& model, std::string& filepath) {
+    LOG_DEBUG("loading model from ", filepath);
+    if (graph_loader::utils::StrEndWith(filepath, ".pt")) {
+        torch::load(model, filepath);
+        return;
+    }
+    LOG_ERROR("Unsupported model file format: ", filepath);
+}
+
 } // namespace graph_one
