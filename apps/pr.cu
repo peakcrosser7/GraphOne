@@ -1,5 +1,6 @@
 
 #include <chrono>
+#include <cstdio>
 
 #include "CLI11/CLI11.hpp"
 
@@ -39,6 +40,7 @@ Tensor pr(GraphX& g, float alpha, float eps) {
 
 int main(int argc, char *argv[]) {
     std::string input_graph;
+    std::string output_path;
 
     // PageRank Parameters
     float alpha = 0.85;
@@ -48,6 +50,7 @@ int main(int argc, char *argv[]) {
     app.add_option("-i,--input_graph", input_graph, "input graph dataset file")->required();
     app.add_option("--alpha", alpha, "alpha (factor) in PageRank (default 0.85)");
     app.add_option("--eps", eps, "epsilon in PageRank (default 1e-8)");
+    app.add_option("-o,--output", output_path, "output path for SSSP result");
     CLI11_PARSE(app, argc, argv);
 
     GraphX g = load_graph(input_graph, kCUDA);
@@ -66,12 +69,21 @@ int main(int argc, char *argv[]) {
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
+    printx("PageRank:");
     printx("Elapsed time: ", duration.count(), " ms");
 
-    ranks = ranks.to(kCPU);
-    printx("PageRank:");
-    for (vid_t i = 0; i < ranks.size(0); ++i) {
-        printf("%d-%f\n", i, ranks[i].item<float>());
+    if (!output_path.empty()) {
+        FILE* fp;
+        if ((fp = fopen(output_path.c_str(), "w")) == nullptr) {
+            LOG_ERROR("open output file failed");
+        }
+        fprintf(fp, "PageRank:\n");
+        fprintf(fp, "Elapsed time: %llu ms\n", duration.count());
+        ranks = ranks.to(kCPU);
+        for (vid_t i = 0; i < ranks.size(0); ++i) {
+            fprintf(fp, "%d-%f\n", i, ranks[i].item<float>());
+        }
+        fclose(fp);
     }
 
     return 0;

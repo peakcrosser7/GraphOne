@@ -1,3 +1,6 @@
+#include <chrono>
+#include <cstdio>
+
 #include "CLI11/CLI11.hpp"
 
 #include "graph_one/graph_one.h"
@@ -96,6 +99,7 @@ TORCH_MODULE(GCN);
 int main(int argc, char *argv[]) {
     std::string input_graph;
     std::string model_path;
+    std::string output_path;
 
     // GCN Parameters
     int nfeat = 96;
@@ -107,6 +111,7 @@ int main(int argc, char *argv[]) {
     app.add_option("-m,--model", model_path, "the model path to load");
     app.add_option("--nfeat", nfeat, "size of vertices' feature in GCN (default 96)");
     app.add_option("--ncls", nclass, "number of classes of each vertex in GCN (default 10)");
+    app.add_option("-o,--output", model_path, "output path for GCN prediction");
     CLI11_PARSE(app, argc, argv);    
 
     Device device(kCUDA);
@@ -122,14 +127,27 @@ int main(int argc, char *argv[]) {
 
     Tensor feat = make_rand<float>({g.num_vertices(), nfeat}, device);
 
+    auto start = std::chrono::high_resolution_clock::now();
     Tensor output = model->forward(g, feat);
-
     Tensor pred = torch::argmax(output, /*dim=*/1);
-    pred = pred.to(kCPU);
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
-    printx("GCN Prediction:");
-    for (vid_t i = 0; i < pred.size(0); ++i) {
-        printf("%d-%d\n", i, pred[i].item<int>());
+    printx("GCN:");
+    printx("Elapsed time: ", duration.count(), " ms");
+
+    if (!output_path.empty()) {
+        FILE* fp;
+        if ((fp = fopen(output_path.c_str(), "w")) == nullptr) {
+            LOG_ERROR("open output file failed");
+        }
+        fprintf(fp, "GCN:\n");
+        fprintf(fp, "Elapsed time: %llu ms\n", duration.count());
+        pred = pred.to(kCPU);
+        for (vid_t i = 0; i < pred.size(0); ++i) {
+            fprintf(fp, "%d-%d\n", i, pred[i].item<int>());
+        }
+        fclose(fp);
     }
 
     return 0;

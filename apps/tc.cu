@@ -34,8 +34,9 @@ int main(int argc, char *argv[]) {
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
+    printx("TC:");
     printx("Elapsed time: ", duration.count(), " ms");
-    printx("TC: ", num_triangles);
+    printx("NumTriangles: ", num_triangles);
 
     return 0;
 }

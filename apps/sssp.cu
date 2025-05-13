@@ -1,4 +1,5 @@
 #include <chrono>
+#include <cstdio>
 
 #include "CLI11/CLI11.hpp"
 
@@ -40,6 +41,7 @@ Tensor sssp(GraphX& g, vid_t src) {
 
 int main(int argc, char *argv[]) {
     std::string input_graph;
+    std::string output_path;
 
     // SSSP Parameters
     vid_t src;
@@ -47,6 +49,7 @@ int main(int argc, char *argv[]) {
     CLI::App app;
     app.add_option("-i,--input_graph", input_graph, "input graph dataset file")->required();
     app.add_option("-s,--src", src, "source vertex id for SSSP")->required();
+    app.add_option("-o,--output", output_path, "output path for SSSP result");
     CLI11_PARSE(app, argc, argv);
 
     GraphX g = load_graph(input_graph, kCUDA);
@@ -56,12 +59,21 @@ int main(int argc, char *argv[]) {
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
+    printx("SSSP:");
     printx("Elapsed time: ", duration.count(), " ms");
 
-    dists = dists.to(kCPU);
-    printx("SSSP:");
-    for (vid_t i = 0; i < dists.size(0); ++i) {
-        printf("%d-%f\n", i, dists[i].item<dist_t>());
+    if (!output_path.empty()) {
+        FILE* fp;
+        if ((fp = fopen(output_path.c_str(), "w")) == nullptr) {
+            LOG_ERROR("open output file failed");
+        }
+        fprintf(fp, "SSSP:\n");
+        fprintf(fp, "Elapsed time: %llu ms\n", duration.count());
+        dists = dists.to(kCPU);
+        for (vid_t i = 0; i < dists.size(0); ++i) {
+            fprintf(fp, "%d-%f\n", i, dists[i].item<dist_t>());
+        }
+        fclose(fp);
     }
 
     return 0;
