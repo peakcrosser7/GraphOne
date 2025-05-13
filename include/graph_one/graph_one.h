@@ -17,5 +17,6 @@
 #include "graph_one/forward.h"
 #include "graph_one/operation/reduce.h"
 #include "graph_one/operation/elementwise.h"
+#include "graph_one/operation/extensions.h"
 
 #include "graph_one/torch_utils.hpp"

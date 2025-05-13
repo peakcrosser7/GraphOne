@@ -3,28 +3,31 @@
 #include <torch/torch.h>
 
 #include "graph_one/graph.hpp"
+#include "graph_one/torch_utils.hpp"
 #include "graph_one/arch/cuda/reduce.cuh"
 
 namespace graph_one {
 
-namespace {
-
 template <typename reduce_t>
-torch::Tensor ReduceCSR(const reduce_t& reduce_op, torch::Tensor spmat, torch::Tensor edge_input) {
+torch::Tensor ReduceCSR(const reduce_t& reduce_op, torch::Tensor spmat, torch::Tensor edge_input = {}) {
+    TORCH_CHECK(spmat.layout() == torch::kSparseCsr, "spmat must be SparseCsr tensor");
+    if (!edge_input.defined()) {
+        edge_input = spmat.values();
+    }
 
     torch::Tensor output = torch::empty({spmat.size(0)}, edge_input.options());
     if (spmat.is_cuda()) {
-        AT_DISPATCH_ALL_TYPES(edge_input.scalar_type(), "reduce_csr", [&] {
-            using IndexType = int64_t;
-            using ValueType = scalar_t;
+        GRAPH_ONE_DISPATCH(edge_input.scalar_type(), "reduce_csr", [&] {
+            using index_t = int64_t;
+            using value_t = scalar_t;
 
             LOG_DEBUG("ReduceCSR");
             graph_one::cuda::ReduceCSR(
                 spmat.size(0), spmat.size(1), spmat._nnz(),
-                spmat.crow_indices().data_ptr<IndexType>(),
-                spmat.col_indices().data_ptr<IndexType>(),
-                edge_input.data_ptr<ValueType>(),
-                output.data_ptr<ValueType>(),
+                spmat.crow_indices().data_ptr<index_t>(),
+                spmat.col_indices().data_ptr<index_t>(),
+                edge_input.data_ptr<value_t>(),
+                output.data_ptr<value_t>(),
                 reduce_op);
         });
     } else {
@@ -34,7 +37,6 @@ torch::Tensor ReduceCSR(const reduce_t& reduce_op, torch::Tensor spmat, torch::T
     return output;
 }
 
-}
 
 struct ReduceOpts {
     bool use_out_edges_ = true;

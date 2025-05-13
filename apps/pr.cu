@@ -52,9 +52,10 @@ int main(int argc, char *argv[]) {
 
     GraphX g = load_graph(input_graph, kCUDA);
 
-    Tensor new_inedge_weights = make_full<float>({g.num_edges()}, 1.f, g.device());
+    Tensor new_inedge_weights = make_ones<float>({g.num_edges()}, g.device());
     Tensor out_degrees = GraphReduce(op::Add{}, g, new_inedge_weights,
                                      ReduceOpts().use_out_edges());
+    // A = A* alpha / out_degrees
     out_degrees = alpha / out_degrees;
     new_inedge_weights = GraphWise(op::Mult{}, g, new_inedge_weights, out_degrees, 
                                    ElementWiseOpts().use_in_edges().use_src_vertex());
@@ -63,7 +64,7 @@ int main(int argc, char *argv[]) {
     auto start = std::chrono::high_resolution_clock::now();
     Tensor ranks = pr(g, alpha, eps);
     auto end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start) / 10;
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
     printx("Elapsed time: ", duration.count(), " ms");
 

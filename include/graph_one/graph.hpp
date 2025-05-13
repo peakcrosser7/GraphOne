@@ -15,13 +15,13 @@ public:
 
     GraphX(torch::Tensor adj, torch::Tensor adj_trans, torch::Device device) 
         : device_(device) {
-        assert(adj.layout() == torch::kSparseCsr);
-        assert(!adj_trans.defined() || adj_trans.layout() == torch::kSparseCsr);
+        TORCH_CHECK(adj.layout() == torch::kSparseCsr, "adj only supports sparse_csr format");
+        TORCH_CHECK(adj_trans.layout() == torch::kSparseCsr, "adj_trnas only supports sparse_csr format");
 
         num_vertices_ = adj.size(0);
         num_edges_ = adj._nnz();
         LOG_DEBUG("GraphX: num_vertices_=", num_vertices_, ", num_edges_=", num_edges_, 
-            ", device_=", device_);
+                  ", device_=", device_);
 
         adj_ = adj.to(device);
         adj_trans_ = adj_trans.to(device);
@@ -80,7 +80,7 @@ public:
                 csc.row_indices(),
                 csc.values(),
                 csc.sizes(),
-                csc.options()
+                adj_.options()
             );
         }
     }
@@ -104,7 +104,7 @@ public:
                 csc.row_indices(),
                 csc.values(),
                 csc.sizes(),
-                csc.options()
+                adj_trans_.options()
             );
         }
     }
@@ -112,6 +112,7 @@ public:
 private:
     vid_t num_vertices_;
     eid_t num_edges_;
+    bool is_directed_;
 
     torch::Device device_;
 

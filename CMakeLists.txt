@@ -20,4 +20,27 @@ include_directories(${TORCH_INCLUDE_DIRS})
 include_directories("third_party")
 include_directories("include")
 
+
+function(add_cuda_exec exec_name exec_file)
+    set(options "")
+    set(oneValueArgs "")
+    set(multiValueArgs LIB)
+    cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    add_executable(${exec_name} ${exec_file})
+    set_target_properties(${exec_name} PROPERTIES 
+        CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES}
+        CUDA_SEPARABLE_COMPILATION ON
+    )
+
+    # common libraries
+    target_link_libraries(${exec_name} PRIVATE ${TORCH_LIBRARIES} cusparse)
+
+    if(ARG_LIB)
+        message(STATUS "Linking ${exec_name} with libraries: ${ARG_LIB}")
+        target_link_libraries(${exec_name} PRIVATE ${ARG_LIB})
+    endif()
+endfunction()
+
+
 add_subdirectory(apps)

@@ -1,17 +1,7 @@
-add_executable(pr pr.cu)
-target_link_libraries(pr ${TORCH_LIBRARIES})
-set_target_properties(pr PROPERTIES 
-    CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES}
-)
+add_cuda_exec(pr pr.cu)
 
-add_executable(sssp sssp.cu)
-target_link_libraries(sssp ${TORCH_LIBRARIES})
-set_target_properties(sssp PROPERTIES 
-    CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES}
-)
+add_cuda_exec(sssp sssp.cu)
 
-add_executable(gcn gcn.cu)
-target_link_libraries(gcn ${TORCH_LIBRARIES})
-set_target_properties(gcn PROPERTIES 
-    CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES}
-)
+add_cuda_exec(gcn gcn.cu)
+
+add_cuda_exec(tc tc.cu)

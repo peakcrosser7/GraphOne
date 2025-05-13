@@ -3,12 +3,10 @@
 #include <torch/torch.h>
 
 #include "graph_one/graph.hpp"
-
+#include "graph_one/torch_utils.hpp"
 #include "graph_one/arch/cuda/elementwise.cuh"
 
 namespace graph_one {
-
-namespace {
 
 template <typename binary_t>
 torch::Tensor ElementWiseCSR(const binary_t& binary_op, torch::Tensor spmat,
@@ -17,7 +15,7 @@ torch::Tensor ElementWiseCSR(const binary_t& binary_op, torch::Tensor spmat,
     
     torch::Tensor output = torch::empty({edge_input.size(0)}, edge_input.options());
     if (spmat.is_cuda()) {
-        AT_DISPATCH_ALL_TYPES(edge_input.scalar_type(), "elementwise_csr", [&] {
+        GRAPH_ONE_DISPATCH(edge_input.scalar_type(), "elementwise_csr", [&] {
             using IndexType = int64_t;
             using ValueType = scalar_t;
 
@@ -38,9 +36,6 @@ torch::Tensor ElementWiseCSR(const binary_t& binary_op, torch::Tensor spmat,
     return output;
 
 }
-
-} // namespace 
-
 
 
 struct ElementWiseOpts {

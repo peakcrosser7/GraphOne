@@ -17,17 +17,30 @@ public:
     MemAllocator(const MemAllocator&) = delete;
     MemAllocator& operator=(const MemAllocator&) = delete;
 
-    void* Allocate(int64_t size, torch::Device device) {
-        torch::Tensor tensor = torch::empty({size}, torch::dtype(torch::kByte).device(device));
+    template <typename T = void>
+    T* Allocate(int64_t size, torch::Device device) {
+        torch::ScalarType dtype;
+        if constexpr (std::is_same_v<T, void>) {
+            dtype = torch::kByte;
+        } else {
+            dtype = torch::CppTypeToScalarType<T>::value;
+        }
+        torch::Tensor tensor = torch::empty({size}, torch::dtype(dtype).device(device));
         tensors_[tensor.data_ptr()] = tensor;
-        return tensor.data_ptr();
+        if constexpr (std::is_same_v<T, void>) {
+            return tensor.data_ptr();
+        } else {
+            return tensor.data_ptr<T>();
+        }
     }
 
-    void* CudaAllocate(int64_t size) {
-        return Allocate(size, torch::kCUDA);
+    template <typename T = void>
+    T* CudaAllocate(int64_t size) {
+        return Allocate<T>(size, torch::kCUDA);
     }
 
-    torch::Tensor GetTensor(void* ptr) {
+    template <typename T>
+    torch::Tensor GetTensor(T* ptr) {
         auto it = tensors_.find(ptr);
         if (it != tensors_.end()) {
             return it->second;
@@ -37,30 +50,13 @@ public:
         }
     }
 
-    torch::Tensor PopTensor(void* ptr) {
+    template <typename T>
+    torch::Tensor PopTensor(T* ptr) {
         auto it = tensors_.find(ptr);
         if (it != tensors_.end()) {
             torch::Tensor tensor = it->second;
             tensors_.erase(it);
             return tensor;
-        } else {
-            TORCH_CHECK(false, "Pointer not found in allocator");
-            return torch::Tensor();
-        }
-    }
-
-
-    torch::Tensor PopTensor(void* ptr, torch::Dtype dtype) {
-        auto it = tensors_.find(ptr);
-        if (it != tensors_.end()) {
-            torch::Tensor tensor = it->second;
-            tensors_.erase(it);
-            
-            int64_t target_element_size = torch::elementSize(dtype);
-            auto sizes = tensor.sizes().vec();
-            sizes.back() = sizes.back() / target_element_size;
-
-            return tensor.view(sizes).to(dtype);          
         } else {
             TORCH_CHECK(false, "Pointer not found in allocator");
             return torch::Tensor();

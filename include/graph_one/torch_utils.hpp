@@ -2,6 +2,17 @@
 
 #include <torch/torch.h>
 
+#define GRAPH_ONE_DISPATCH_CASE(...) \
+  AT_DISPATCH_CASE(at::ScalarType::Double, __VA_ARGS__) \
+  AT_DISPATCH_CASE(at::ScalarType::Float, __VA_ARGS__)  \
+  AT_DISPATCH_CASE(at::ScalarType::Int, __VA_ARGS__)    \
+  AT_DISPATCH_CASE(at::ScalarType::Long, __VA_ARGS__)
+
+
+#define GRAPH_ONE_DISPATCH(TYPE, NAME, ...) \
+    AT_DISPATCH_SWITCH(TYPE, NAME, GRAPH_ONE_DISPATCH_CASE(__VA_ARGS__))
+
+
 namespace graph_one {
 
 using Tensor = torch::Tensor;

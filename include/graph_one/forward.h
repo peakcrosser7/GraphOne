@@ -8,6 +8,8 @@
 #include "graph_one/graph.hpp"
 #include "graph_one/log.hpp"
 #include "graph_one/blas/gspmv.h"
+#include "graph_one/blas/spgemm.h"
+#include "graph_one/blas/gspgemm_masked.h"
 
 namespace graph_one {
 
@@ -20,17 +22,17 @@ using raw_type = typename std::remove_cv<typename std::remove_reference<T>::type
 }
 
 struct ForwardOpts {
-    bool use_out_edges_ = true;
+    bool use_inedge_weights_ = true;
 
     ForwardOpts() = default;
 
-    ForwardOpts use_out_edges() {
-        use_out_edges_ = true;
+    ForwardOpts use_inedge_weights() {
+        use_inedge_weights_ = true;
         return *this;
     }
 
-    ForwardOpts use_in_edges() {
-        use_out_edges_ = false;
+    ForwardOpts use_outedge_weights() {
+        use_inedge_weights_ = false;
         return *this;
     }
 };
@@ -44,7 +46,7 @@ torch::Tensor GraphForward(const functor_t& functor, GraphX& g,
     TORCH_CHECK(!edge_feat.defined() || edge_feat.size(0) == g.num_edges(), "edge_feat must have the same size as the number of edges in the graph");
 
     torch::Tensor spmat;
-    if (opts.use_out_edges_) {
+    if (opts.use_inedge_weights_) {
         spmat = g.adj_trans();
     } else {
         spmat = g.adj();
@@ -68,9 +70,10 @@ torch::Tensor GraphForward(const functor_t& functor, GraphX& g,
     auto& apply_func = functor.apply_func;
 
     torch::Tensor output;
+    bool do_apply_func = true;
     if (vertex_feat.layout() == torch::kStrided) {  // dense vertex_feat
         if (!edge_feat.defined()) { 
-            if (std::is_same_v<raw_type<decltype(construct_op)>, op::Mult>
+            if constexpr (std::is_same_v<raw_type<decltype(construct_op)>, op::Mult>
                 && std::is_same_v<raw_type<decltype(gather_op)>, op::Add>) {    // standard SpMV / SpMM
                 if (vertex_feat.dim() == 1) {
                     LOG_DEBUG("use torch::mv");
@@ -81,22 +84,54 @@ torch::Tensor GraphForward(const functor_t& functor, GraphX& g,
                     output = torch::mm(spmat, vertex_feat);
                 }
             } else {    // generalized SpMV / SpMM
-                if (vertex_feat.dim() == 1) {
+                if (vertex_feat.dim() == 1) {   // GSpMV
                     LOG_DEBUG("use blas::GSpMV");
                     output = blas::GSpMV(spmat, vertex_feat, construct_op, gather_op);
-                } else {
+                } else {    // GSpMM
                     // TODO
+                    TORCH_CHECK(false, "generalized SpMM is not supported yet");
                 }
             }
-        } else {    // has vertex_feat
+        } else {    // has vertex_feat (dim >= 2)
             // TODO
+            TORCH_CHECK(false, "edge_feat is not supported yet");
         }
     } else {    // sparse vertex_feat
         // TODO SpMSpV/SpGEMM
-
+        if (!edge_feat.defined()) { 
+            if constexpr (std::is_same_v<raw_type<decltype(construct_op)>, op::Mult>
+                && std::is_same_v<raw_type<decltype(gather_op)>, op::Add>) {    // standard SpMV / SpMM
+                if (vertex_feat.dim() == 1) {
+                    // SpMSpV
+                    TORCH_CHECK(false, "SpMSpV is not supported yet");
+                } else if (vertex_feat.dim() == 2) {
+                    // SpGEMM
+                    if constexpr (std::is_same_v<raw_type<decltype(apply_func)>, MaskApplier>) {
+                        LOG_DEBUG(" Masked-SpGEMM");
+                        torch::Tensor mask = apply_func.mask();
+                        output = blas::GSpGEMM_Masked(spmat, vertex_feat, mask, 
+                            construct_op, gather_op);
+                        do_apply_func = false;
+                    } else {
+                        LOG_DEBUG("use SpGEMM");
+                        output = blas::SpGEMM(spmat, vertex_feat);
+                    }
+                } else {
+                    TORCH_CHECK(false, "vertex_feat must be 1D or 2D sparse-tensor");
+                }
+            } else {    // generalized SpMV / SpMM
+                // TODO
+                TORCH_CHECK(false, "generalized SpMV/SpMM is not supported yet");
+            }
+        } else {    // has vertex_feat (dim >= 2)
+            // TODO
+            TORCH_CHECK(false, "edge_feat is not supported yet");
+        }
     }
 
-    output = apply_func(output);
+    if (do_apply_func) {
+        output = apply_func(output);
+    }
 
     return output;
 }

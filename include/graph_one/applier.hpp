@@ -22,10 +22,16 @@ public:
     MaskApplier(torch::Tensor mask, torch::Scalar val = 0.) : mask_(mask), val_(val) {}
 
     torch::Tensor operator() (torch::Tensor x) const override {
+        TORCH_CHECK(x.layout() == torch::kStrided, "x must be a strided tensor");
+
         assert(x.layout() == mask_.layout());
         assert(x.sizes() == mask_.sizes());
         
         return torch::where(mask_.to(torch::kBool), x, val_);
+    }
+
+    torch::Tensor mask() const {
+        return mask_;
     }
 
 private:

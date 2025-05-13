@@ -82,9 +82,9 @@ void ElementWiseCSR(index_t n_rows, index_t n_cols, offset_t nnz,
                     bool use_rows,
                     const binary_t& binary_op) {
     
-    constexpr int kNumRowsPerBlock = 8;
-    constexpr int kNumThreads = 32 * kNumRowsPerBlock;
-    int num_blocks = (n_rows + kNumRowsPerBlock - 1) / kNumRowsPerBlock;
+    constexpr unsigned kNumRowsPerBlock = 8;
+    constexpr unsigned kNumThreads = 32 * kNumRowsPerBlock;
+    unsigned num_blocks = (n_rows + kNumRowsPerBlock - 1) / kNumRowsPerBlock;
 
     if (use_rows) {
       RowWiseCSRKernel<<<num_blocks, kNumThreads>>>(

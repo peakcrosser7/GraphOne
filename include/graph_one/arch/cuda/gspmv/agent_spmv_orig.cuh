@@ -107,6 +107,7 @@ template <
     typename        vec_x_value_t,
     typename        vec_y_value_t>
 struct SpmvParams {
+    __host__ __device__ 
     SpmvParams(mat_value_t*      d_values,
                offset_t*         d_row_end_offsets,
                index_t*          d_column_indices,
