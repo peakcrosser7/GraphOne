@@ -72,58 +72,55 @@ torch::Tensor GraphForward(const functor_t& functor, GraphX& g,
     torch::Tensor output;
     bool do_apply_func = true;
     if (vertex_feat.layout() == torch::kStrided) {  // dense vertex_feat
-        if (!edge_feat.defined()) { 
-            if constexpr (std::is_same_v<raw_type<decltype(construct_op)>, op::Mult>
-                && std::is_same_v<raw_type<decltype(gather_op)>, op::Add>) {    // standard SpMV / SpMM
-                if (vertex_feat.dim() == 1) {
+        if (!edge_feat.defined()) {
+            if (vertex_feat.dim() == 1) {   // (G)SpMV
+                if constexpr (std::is_same_v<raw_type<decltype(construct_op)>, op::Mult>
+                              && std::is_same_v<raw_type<decltype(gather_op)>, op::Add>) {    // standard SpMV
                     LOG_DEBUG("use torch::mv");
                     output = torch::mv(spmat, vertex_feat);
-                    // output = blas::GSpMV(spmat, vertex_feat, construct_op, gather_op);
-                } else {
-                    LOG_DEBUG("use torch::mm");
-                    output = torch::mm(spmat, vertex_feat);
-                }
-            } else {    // generalized SpMV / SpMM
-                if (vertex_feat.dim() == 1) {   // GSpMV
+                } else {    // generalized SpMV
                     LOG_DEBUG("use blas::GSpMV");
                     output = blas::GSpMV(spmat, vertex_feat, construct_op, gather_op);
-                } else {    // GSpMM
+                }
+            } else {    // (G)SpMM
+                if constexpr (std::is_same_v<raw_type<decltype(construct_op)>, op::Mult>
+                    && std::is_same_v<raw_type<decltype(gather_op)>, op::Add>) {    // standard SpMM
+                    LOG_DEBUG("use torch::mm");
+                    output = torch::mm(spmat, vertex_feat);
+                } else {    // generalized SpMM
                     // TODO
                     TORCH_CHECK(false, "generalized SpMM is not supported yet");
                 }
             }
-        } else {    // has vertex_feat (dim >= 2)
+        } else {    // has edge_feat (dim >= 2)
             // TODO
             TORCH_CHECK(false, "edge_feat is not supported yet");
         }
     } else {    // sparse vertex_feat
         // TODO SpMSpV/SpGEMM
         if (!edge_feat.defined()) { 
-            if constexpr (std::is_same_v<raw_type<decltype(construct_op)>, op::Mult>
-                && std::is_same_v<raw_type<decltype(gather_op)>, op::Add>) {    // standard SpMV / SpMM
-                if (vertex_feat.dim() == 1) {
-                    // SpMSpV
-                    TORCH_CHECK(false, "SpMSpV is not supported yet");
-                } else if (vertex_feat.dim() == 2) {
-                    // SpGEMM
-                    if constexpr (std::is_same_v<raw_type<decltype(apply_func)>, MaskApplier>) {
-                        LOG_DEBUG(" Masked-SpGEMM");
-                        torch::Tensor mask = apply_func.mask();
-                        output = blas::GSpGEMM_Masked(spmat, vertex_feat, mask, 
-                            construct_op, gather_op);
-                        do_apply_func = false;
-                    } else {
-                        LOG_DEBUG("use SpGEMM");
-                        output = blas::SpGEMM(spmat, vertex_feat);
-                    }
+            if (vertex_feat.dim() == 1) {
+                // SpMSpV
+                TORCH_CHECK(false, "SpMSpV is not supported yet");
+            } else if (vertex_feat.dim() == 2) {
+                if constexpr (std::is_same_v<raw_type<decltype(construct_op)>, op::Mult>
+                              && std::is_same_v<raw_type<decltype(gather_op)>, op::Add>
+                              && std::is_same_v<raw_type<decltype(apply_func)>, DummyApplier>) {    // standard SpGEMM
+                    LOG_DEBUG("use SpGEMM");
+                    output = blas::SpGEMM(spmat, vertex_feat);
+                } else if constexpr (std::is_same_v<raw_type<decltype(apply_func)>, MaskApplier>) {
+                    LOG_DEBUG("use Masked-GSpGEMM");
+                    torch::Tensor mask = apply_func.mask();
+                    output = blas::GSpGEMM_Masked(spmat, vertex_feat, mask, 
+                        construct_op, gather_op);
+                    do_apply_func = false;
                 } else {
-                    TORCH_CHECK(false, "vertex_feat must be 1D or 2D sparse-tensor");
+                    TORCH_CHECK(false, "generalized SpGEMM is not supported yet");
                 }
-            } else {    // generalized SpMV / SpMM
-                // TODO
-                TORCH_CHECK(false, "generalized SpMV/SpMM is not supported yet");
+            } else {
+                TORCH_CHECK(false, "vertex_feat must be 1D or 2D sparse-tensor");
             }
-        } else {    // has vertex_feat (dim >= 2)
+        } else {    // has edge_feat (dim >= 2)
             // TODO
             TORCH_CHECK(false, "edge_feat is not supported yet");
         }
