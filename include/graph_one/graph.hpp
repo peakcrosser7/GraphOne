@@ -13,13 +13,14 @@ namespace graph_one {
 class GraphX {
 public:
 
-    GraphX(torch::Tensor adj, torch::Tensor adj_trans, torch::Device device) 
+    GraphX(torch::Tensor adj, torch::Tensor adj_trans, bool is_directed, torch::Device device) 
         : device_(device) {
         TORCH_CHECK(adj.layout() == torch::kSparseCsr, "adj only supports sparse_csr format");
         TORCH_CHECK(adj_trans.layout() == torch::kSparseCsr, "adj_trnas only supports sparse_csr format");
 
         num_vertices_ = adj.size(0);
         num_edges_ = adj._nnz();
+        is_directed_ = is_directed;
         LOG_DEBUG("GraphX: num_vertices_=", num_vertices_, ", num_edges_=", num_edges_, 
                   ", device_=", device_);
 
@@ -27,7 +28,8 @@ public:
         adj_trans_ = adj_trans.to(device);
     }
 
-    GraphX(torch::Tensor adj, torch::Tensor adj_trans) : GraphX(adj, adj_trans, adj.device()) {}
+    GraphX(torch::Tensor adj, torch::Tensor adj_trans, bool is_directed) 
+        : GraphX(adj, adj_trans, is_directed, adj.device()) {}
 
     vid_t num_vertices() const {
         return num_vertices_;
@@ -40,9 +42,17 @@ public:
     torch::Device device() const {
         return device_;
     }
+
+    bool is_directed() const {
+        return is_directed_;
+    }
+
+    bool is_undirected() const {
+        return !is_directed_;
+    }
     
     GraphX to(torch::Device device) {
-        return GraphX(adj_, adj_trans_, device);
+        return GraphX(adj_, adj_trans_, is_directed_, device);
     }
 
     torch::Tensor adj() const {
@@ -74,14 +84,18 @@ public:
                 adj_.options()
             );
         if (both) {
-            torch::Tensor csc = adj_.to_sparse_csc();
-            adj_trans_ = torch::sparse_csr_tensor(
-                csc.ccol_indices(),
-                csc.row_indices(),
-                csc.values(),
-                csc.sizes(),
-                adj_.options()
-            );
+            if (is_directed_) {
+                torch::Tensor csc = adj_.to_sparse_csc();
+                adj_trans_ = torch::sparse_csr_tensor(
+                    csc.ccol_indices(),
+                    csc.row_indices(),
+                    csc.values(),
+                    csc.sizes(),
+                    adj_.options()
+                );
+            } else {
+                adj_trans_ = adj_;
+            }
         }
     }
 
@@ -98,14 +112,18 @@ public:
                 adj_trans_.options()
             );
         if (both) {
-            torch::Tensor csc = adj_trans_.to_sparse_csc();
-            adj_ = torch::sparse_csr_tensor(
-                csc.ccol_indices(),
-                csc.row_indices(),
-                csc.values(),
-                csc.sizes(),
-                adj_trans_.options()
-            );
+            if (is_directed_) {
+                torch::Tensor csc = adj_trans_.to_sparse_csc();
+                adj_ = torch::sparse_csr_tensor(
+                    csc.ccol_indices(),
+                    csc.row_indices(),
+                    csc.values(),
+                    csc.sizes(),
+                    adj_trans_.options()
+                );
+            } else {
+                adj_ = adj_trans_;
+            }
         }
     }
 

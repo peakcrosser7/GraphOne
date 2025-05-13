@@ -7,6 +7,8 @@
 using namespace graph_one;
 
 int64_t tc(GraphX& g) {
+    TORCH_CHECK(g.is_undirected(), "Triangle counting only works on undirected graphs");
+
     GraphX g_tril = Tril(g);
     g_tril.set_outedge_weights(make_ones<float>({g_tril.num_edges()}, g_tril.device()), true);
 

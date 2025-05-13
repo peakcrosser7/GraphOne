@@ -57,13 +57,16 @@ GraphX LoadGraphFromTxt(const std::string& filepath, LoaderOpts& opts, torch::De
         {num_vertices, num_vertices});
 
     torch::Tensor adj = coo.to_sparse_csr();
-    // TODO: build csc only directed graph
-    torch::Tensor csc = coo.to_sparse_csc();
-
-    torch::Tensor adj_trans = torch::sparse_csr_tensor(csc.ccol_indices(), csc.row_indices(), csc.values(), csc.sizes(),
-        adj.options());
-
-    return GraphX(adj, adj_trans, device);
+    torch::Tensor adj_trans;
+    if (opts.directed()) {
+        torch::Tensor csc = coo.to_sparse_csc();
+        adj_trans = torch::sparse_csr_tensor(csc.ccol_indices(), csc.row_indices(), csc.values(), 
+                                             csc.sizes(), adj.options());
+    } else {
+        adj_trans = adj;
+    }
+    
+    return GraphX(adj, adj_trans, opts.directed(), device);
 }
 
 template <typename value_t = float>

@@ -52,7 +52,6 @@ torch::Tensor TrilCSR(torch::Tensor spmat) {
 
 GraphX Tril(GraphX& g) {
     torch::Tensor adj = g.adj();
-    torch::Tensor adj_trans = g.adj_trans();
 
     torch::Tensor adj_tril = TrilCSR(adj);
     torch::Tensor csc_tril = adj_tril.to_sparse_csc();
@@ -64,7 +63,7 @@ GraphX Tril(GraphX& g) {
         adj_tril.options()
     );
 
-    return GraphX(adj_tril, adj_trans_tril);
+    return GraphX(adj_tril, adj_trans_tril, true);
 }
 
 } // namespace graph_one
